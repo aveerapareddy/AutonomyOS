@@ -24,6 +24,10 @@ The repository currently provides:
 - **Perception foundation with typed detection contracts** — `DetectedObject`, `PerceptionRequest`, `PerceptionResult`; same contract for a future YOLO-backed implementation.
 - **Rule-based target and obstacle detection** from simulator metadata; confidence defaults in `core.constants`.
 - **Object typing support** (target, wall, block) via `WorldObject` descriptor; `obstacle_objects` and `target_object` on `BuiltWorld` to avoid parallel-list drift.
+- **Telemetry and mission event logging** — Event-driven telemetry with stable event types (e.g. mission_received, plan_generated, path_computed); in-memory store; GET `/missions/{mission_id}/telemetry` returns ordered event timeline. Mission creation emits `mission_received`. Telemetry is the foundation for mission replay and benchmarking; replay and benchmark runs are not implemented yet.
+- **Event-driven telemetry foundation** — Per-mission monotonic sequence and timestamp; stable event types and source-component constants for replay and trace filtering.
+- **Mission timeline retrieval API** — GET `/missions/{mission_id}/telemetry` returns events in order (sequence, then timestamp).
+- **Replay-ready event contracts** — TelemetryEvent (event_id, mission_id, sequence, timestamp, event_type, source_component, payload) and TelemetryEventType enum.
 
 The mission API and simulator are not yet connected; mission execution and replay are not implemented.
 
@@ -46,9 +50,9 @@ Run all commands from the repository root (the directory containing `backend/` a
 | Directory | Purpose |
 |-----------|---------|
 | `backend/` | Python package for the service and simulation. |
-| `backend/api/` | FastAPI app and HTTP routes. |
-| `backend/services/` | Business logic (e.g. mission lifecycle). |
-| `backend/schemas/` | Pydantic models for API and internal contracts. |
+| `backend/api/` | FastAPI app, routes (missions, telemetry), dependencies. |
+| `backend/services/` | Business logic (mission lifecycle, telemetry). |
+| `backend/schemas/` | Pydantic models (missions, telemetry, perception, navigation, benchmark). |
 | `backend/simulator/` | PyBullet world, robot, environment, occupancy grid. |
 | `backend/agents/` | Navigation agent (A*), perception agent (rule-based from world metadata). |
 | `backend/scenarios/` | Reserved for scenario generation (not yet implemented). |
@@ -76,7 +80,7 @@ pip install -r backend/requirements.txt
 uvicorn backend.api.main:app --reload
 ```
 
-API base URL: `http://127.0.0.1:8000` (or the host/port you configure). Health: `GET /health`. Missions: `POST /missions`, `GET /missions/{mission_id}`.
+API base URL: `http://127.0.0.1:8000` (or the host/port you configure). Health: `GET /health`. Missions: `POST /missions`, `GET /missions/{mission_id}`. Telemetry: `GET /missions/{mission_id}/telemetry`.
 
 **Simulator demo**
 
@@ -132,7 +136,7 @@ Done.
 python -m pytest backend/tests/ -v
 ```
 
-Mission API tests always run; simulator tests are skipped if PyBullet is not installed.
+Mission API tests always run; simulator tests are skipped if PyBullet is not installed. Telemetry is in-memory and replaceable with SQLite later; it is the foundation for mission replay and benchmarking (replay and benchmark runs not implemented).
 
 ## Known Limitations
 
@@ -140,6 +144,9 @@ Mission API tests always run; simulator tests are skipped if PyBullet is not ins
 - No path execution yet; navigation produces waypoints only.
 - Path simplification is collinear-only (reduces straight-line noise); no curve fitting or smoothing.
 - Perception: metadata-based detection only; no image-based perception yet; no tracking across frames.
+- Telemetry is currently emitted only for mission creation; planning, navigation, and execution will emit events when those flows are added.
+- Orchestration will later move out of route layer (mission create is already coordinated via MissionOrchestrator).
+- Telemetry is in-memory only; no persistence yet.
 
 ## Roadmap
 

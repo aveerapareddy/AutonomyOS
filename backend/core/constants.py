@@ -20,3 +20,10 @@ BENCHMARK_STATUS_FAILED = "failed"
 # Perception confidence defaults (Phase-1 rule-based uses these; evolve for YOLO).
 TARGET_CONFIDENCE_DEFAULT = 1.0
 OBSTACLE_CONFIDENCE_DEFAULT = 1.0
+
+# Telemetry source components (replay and trace filtering).
+TELEMETRY_SOURCE_API = "api"
+TELEMETRY_SOURCE_PLANNER = "planner"
+TELEMETRY_SOURCE_PERCEPTION_AGENT = "perception_agent"
+TELEMETRY_SOURCE_NAVIGATION_AGENT = "navigation_agent"
+TELEMETRY_SOURCE_EXECUTION_AGENT = "execution_agent"
