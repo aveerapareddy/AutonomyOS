@@ -8,6 +8,7 @@ OCCUPIED = 1
 FREE = 0
 
 DEFAULT_RESOLUTION = 0.25
+DEFAULT_INFLATION_RADIUS = 1
 
 
 @dataclass
@@ -65,10 +66,12 @@ def build_occupancy_grid(
     world_bounds: Tuple[float, float, float, float],
     obstacle_positions: List[Tuple[float, float]],
     resolution: float = DEFAULT_RESOLUTION,
+    inflation_radius: int = DEFAULT_INFLATION_RADIUS,
 ) -> OccupancyGrid:
     """
     Build grid from bounds and obstacle list. Each obstacle (x,y) marks
-    its cell occupied. Deterministic.
+    its cell and cells within inflation_radius (Manhattan, in grid cells)
+    as occupied. Deterministic.
     """
     min_x, max_x, min_y, max_y = world_bounds
     ncols = int((max_x - min_x) / resolution)
@@ -77,12 +80,20 @@ def build_occupancy_grid(
     nrows = max(1, nrows)
 
     grid: List[List[int]] = [[FREE] * ncols for _ in range(nrows)]
+    radius = max(0, inflation_radius)
 
     for (ox, oy) in obstacle_positions:
         col = int((ox - min_x) / resolution)
         row = int((oy - min_y) / resolution)
-        if 0 <= row < nrows and 0 <= col < ncols:
-            grid[row][col] = OCCUPIED
+        if not (0 <= row < nrows and 0 <= col < ncols):
+            continue
+        for dr in range(-radius, radius + 1):
+            for dc in range(-radius, radius + 1):
+                if abs(dr) + abs(dc) > radius:
+                    continue
+                r, c = row + dr, col + dc
+                if 0 <= r < nrows and 0 <= c < ncols:
+                    grid[r][c] = OCCUPIED
 
     return OccupancyGrid(
         grid=grid,

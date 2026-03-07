@@ -18,19 +18,26 @@ The repository currently provides:
 - **Robot abstraction** — Single body in the sim with a minimal kinematic model.
 - **Basic movement primitives** — Forward, backward, turn left, turn right, stop; pose exposed for logging and future navigation/replay.
 - **Typed simulator API** — `RobotAction` enum, `BuiltWorld` metadata (world bounds, obstacle positions, target), and environment helpers (`get_world_bounds()`, `get_obstacles()`, `get_target_pose()`) for navigation and scenario use.
-- **Navigation foundation** — Occupancy grid from world metadata (`grid_map.py`), A* path planning (`agents/navigation_agent.py`), navigation schemas (Waypoint, NavigationRequest, NavigationResult). No robot execution or perception yet.
+- **Occupancy-grid navigation foundation** — Grid built from world bounds and obstacle positions; configurable resolution and obstacle inflation (grid-cell radius).
+- **A* path planning** over deterministic warehouse environments; Manhattan heuristic, 4-connected grid; path simplified by collapsing collinear waypoints.
+- **Navigation demo** from robot start to target location (`run_navigation_demo.py`); no path execution yet.
+- **Perception foundation with typed detection contracts** — `DetectedObject`, `PerceptionRequest`, `PerceptionResult`; same contract for a future YOLO-backed implementation.
+- **Rule-based target and obstacle detection** from simulator metadata; confidence defaults in `core.constants`.
+- **Object typing support** (target, wall, block) via `WorldObject` descriptor; `obstacle_objects` and `target_object` on `BuiltWorld` to avoid parallel-list drift.
 
 The mission API and simulator are not yet connected; mission execution and replay are not implemented.
 
 **Simulator architecture**
 
 - **actions.py** — `RobotAction` enum (forward, backward, turn_left, turn_right, stop); used by `environment.step()` and the demo.
-- **world_builder.py** — Builds a deterministic scene: ground plane, two walls, one block, one red target cube. Returns a `BuiltWorld` with `ground_id`, `obstacle_ids`, `obstacle_positions` (2D), `target_id`, `target_position` (2D), `target_z`, and `world_bounds` (min_x, max_x, min_y, max_y).
+- **world_builder.py** — Builds a deterministic scene: ground plane, two walls, one block, one red target cube. Returns a `BuiltWorld` with `ground_id`, `obstacle_ids`, `obstacle_positions`, `obstacle_types` (wall/block), `target_id`, `target_position` (2D), `target_z`, and `world_bounds` (min_x, max_x, min_y, max_y).
 - **robot.py** — Kinematic robot (box body); maintains (x, y, theta) and syncs to PyBullet; exposes `forward`, `backward`, `turn_left`, `turn_right`, `stop` and `get_pose()`.
-- **environment.py** — Connects to PyBullet (DIRECT or GUI), builds world, spawns robot. Exposes `reset()`, `step(RobotAction)`, `get_robot_pose()`, `get_world_bounds()`, `get_obstacles()`, `get_target_pose()`, `shutdown()`. No API or mission coupling.
+- **environment.py** — Connects to PyBullet (DIRECT or GUI), builds world, spawns robot. Exposes `reset()`, `step(RobotAction)`, `get_robot_pose()`, `get_world_bounds()`, `get_obstacles()`, `get_obstacle_types()`, `get_target_pose()`, `shutdown()`. No API or mission coupling.
 - **grid_map.py** — Builds a 2D occupancy grid from world bounds and obstacle positions; `world_to_grid`, `grid_to_world`, `is_blocked`, `neighbors` for path planning.
 - **agents/navigation_agent.py** — A* path planning on an occupancy grid; accepts start/goal in world coords, returns world-space waypoints.
+- **agents/perception_agent.py** — Rule-based perception from world metadata; returns `PerceptionResult` (targets, obstacles); swappable with YOLO later.
 - **schemas/navigation.py** — Waypoint, NavigationRequest, NavigationResult.
+- **schemas/perception.py** — DetectedObject, PerceptionRequest, PerceptionResult.
 
 ## Repository Structure
 
@@ -43,7 +50,7 @@ Run all commands from the repository root (the directory containing `backend/` a
 | `backend/services/` | Business logic (e.g. mission lifecycle). |
 | `backend/schemas/` | Pydantic models for API and internal contracts. |
 | `backend/simulator/` | PyBullet world, robot, environment, occupancy grid. |
-| `backend/agents/` | Navigation agent (A* path planning); planning/perception agents later. |
+| `backend/agents/` | Navigation agent (A*), perception agent (rule-based from world metadata). |
 | `backend/scenarios/` | Reserved for scenario generation (not yet implemented). |
 | `backend/storage/` | Storage abstractions and repository implementations. |
 | `scripts/` | One-off and demo scripts (e.g. simulator demo). |
@@ -85,7 +92,15 @@ python scripts/run_navigation_demo.py
 
 Builds an occupancy grid from the sim world, plans a path from robot pose to target, and prints start, target, path found, and waypoints. Does not move the robot.
 
-The simulator and navigation are tested with Python 3.11 and 3.12 on macOS (pybullet-mm for pip install).
+**Perception demo**
+
+```bash
+python scripts/run_perception_demo.py
+```
+
+Runs the perception agent on the sim world metadata and prints detected targets and obstacles (object_id, type, x, y). No image-based detection; Phase-1 is rule-based from world state.
+
+The simulator, navigation, and perception are tested with Python 3.11 and 3.12 on macOS (pybullet-mm for pip install).
 
 Uses PyBullet in DIRECT (headless) mode, runs a short sequence of movements, and prints robot and target poses.
 
@@ -118,6 +133,13 @@ python -m pytest backend/tests/ -v
 ```
 
 Mission API tests always run; simulator tests are skipped if PyBullet is not installed.
+
+## Known Limitations
+
+- Static planning only; world is fixed at plan time; no replanning or dynamic obstacles.
+- No path execution yet; navigation produces waypoints only.
+- Path simplification is collinear-only (reduces straight-line noise); no curve fitting or smoothing.
+- Perception: metadata-based detection only; no image-based perception yet; no tracking across frames.
 
 ## Roadmap
 

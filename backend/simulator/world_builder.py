@@ -9,6 +9,8 @@ try:
 except ImportError:
     pb = None
 
+from backend.schemas.world import WorldObject
+
 
 # World bounds (min_x, max_x, min_y, max_y). Fixed for reproducibility.
 WORLD_BOUNDS = (-10.0, 10.0, -10.0, 10.0)
@@ -16,12 +18,15 @@ WORLD_BOUNDS = (-10.0, 10.0, -10.0, 10.0)
 
 @dataclass
 class BuiltWorld:
-    """Ids and 2D positions of built world elements."""
+    """Ids, typed world objects, and derived lists for backward compat."""
 
     ground_id: int
     obstacle_ids: List[int]
+    obstacle_objects: List[WorldObject]
     obstacle_positions: List[Tuple[float, float]]
+    obstacle_types: List[str]
     target_id: int
+    target_object: WorldObject
     target_position: Tuple[float, float]
     target_z: float
     world_bounds: Tuple[float, float, float, float]
@@ -51,14 +56,25 @@ def build_world() -> BuiltWorld:
         raise RuntimeError("pybullet is not installed")
 
     ground_id = _create_ground()
-    obstacle_ids, obstacle_positions = _create_obstacles()
+    obstacle_ids, obstacle_objects = _create_obstacles()
     target_id, target_position_2d, target_z = _create_target()
+    target_object = WorldObject(
+        object_id="target",
+        object_type="target",
+        x=target_position_2d[0],
+        y=target_position_2d[1],
+    )
+    obstacle_positions = [(o.x, o.y) for o in obstacle_objects]
+    obstacle_types = [o.object_type for o in obstacle_objects]
 
     return BuiltWorld(
         ground_id=ground_id,
         obstacle_ids=obstacle_ids,
+        obstacle_objects=obstacle_objects,
         obstacle_positions=obstacle_positions,
+        obstacle_types=obstacle_types,
         target_id=target_id,
+        target_object=target_object,
         target_position=target_position_2d,
         target_z=target_z,
         world_bounds=WORLD_BOUNDS,
@@ -71,10 +87,10 @@ def _create_ground() -> int:
     return body
 
 
-def _create_obstacles() -> Tuple[List[int], List[Tuple[float, float]]]:
-    """Aisle-like barriers: two parallel walls, one block."""
+def _create_obstacles() -> Tuple[List[int], List[WorldObject]]:
+    """Aisle-like barriers: two parallel walls, one block. Returns (ids, typed objects)."""
     ids_: List[int] = []
-    positions: List[Tuple[float, float]] = []
+    objects_: List[WorldObject] = []
     shape = pb.createCollisionShape(
         pb.GEOM_BOX,
         halfExtents=[_WALL_HALF_X, _WALL_HALF_Y, _WALL_HALF_Z],
@@ -86,7 +102,7 @@ def _create_obstacles() -> Tuple[List[int], List[Tuple[float, float]]]:
             basePosition=(_WALL_LEFT_XY[0], _WALL_LEFT_XY[1], _WALL_HALF_Z),
         )
     )
-    positions.append(_WALL_LEFT_XY)
+    objects_.append(WorldObject(object_id="obstacle_0", object_type="wall", x=_WALL_LEFT_XY[0], y=_WALL_LEFT_XY[1]))
     ids_.append(
         pb.createMultiBody(
             0,
@@ -94,7 +110,7 @@ def _create_obstacles() -> Tuple[List[int], List[Tuple[float, float]]]:
             basePosition=(_WALL_RIGHT_XY[0], _WALL_RIGHT_XY[1], _WALL_HALF_Z),
         )
     )
-    positions.append(_WALL_RIGHT_XY)
+    objects_.append(WorldObject(object_id="obstacle_1", object_type="wall", x=_WALL_RIGHT_XY[0], y=_WALL_RIGHT_XY[1]))
     block = pb.createCollisionShape(pb.GEOM_BOX, halfExtents=_OBSTACLE_HALF)
     ids_.append(
         pb.createMultiBody(
@@ -103,8 +119,8 @@ def _create_obstacles() -> Tuple[List[int], List[Tuple[float, float]]]:
             basePosition=(_BLOCK_XY[0], _BLOCK_XY[1], _OBSTACLE_HALF[2]),
         )
     )
-    positions.append(_BLOCK_XY)
-    return ids_, positions
+    objects_.append(WorldObject(object_id="obstacle_2", object_type="block", x=_BLOCK_XY[0], y=_BLOCK_XY[1]))
+    return ids_, objects_
 
 
 def _create_target() -> Tuple[int, Tuple[float, float], float]:

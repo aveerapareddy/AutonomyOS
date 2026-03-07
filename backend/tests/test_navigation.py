@@ -27,6 +27,7 @@ def test_blocked_unreachable() -> None:
         world_bounds=(0.0, 3.0, 0.0, 1.0),
         obstacle_positions=[(1.5, 0.5)],
         resolution=1.0,
+        inflation_radius=0,
     )
     result = plan_path(grid, 0.5, 0.5, 2.5, 0.5)
     assert result.path_found is False

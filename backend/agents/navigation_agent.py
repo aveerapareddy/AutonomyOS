@@ -7,6 +7,26 @@ from backend.schemas.navigation import NavigationResult, Waypoint
 from backend.simulator.grid_map import OccupancyGrid
 
 
+def _collinear(p1: Tuple[int, int], p2: Tuple[int, int], p3: Tuple[int, int]) -> bool:
+    """True if p2 lies on the line segment p1-p3 (in grid row,col)."""
+    r1, c1 = p1
+    r2, c2 = p2
+    r3, c3 = p3
+    return (c2 - c1) * (r3 - r1) == (r2 - r1) * (c3 - c1)
+
+
+def _simplify_path(path: List[Tuple[int, int]]) -> List[Tuple[int, int]]:
+    """Drop consecutive collinear points; keep direction changes only."""
+    if len(path) <= 2:
+        return path
+    out: List[Tuple[int, int]] = [path[0]]
+    for i in range(1, len(path) - 1):
+        if not _collinear(path[i - 1], path[i], path[i + 1]):
+            out.append(path[i])
+    out.append(path[-1])
+    return out
+
+
 def _heuristic(row: int, col: int, goal_row: int, goal_col: int) -> float:
     """Manhattan distance. Admissible for 4-connected grid."""
     return float(abs(row - goal_row) + abs(col - goal_col))
@@ -85,6 +105,7 @@ def plan_path(
             path_length=0,
             message="No path found",
         )
+    path_rc = _simplify_path(path_rc)
     waypoints = [
         Waypoint(x=grid.grid_to_world(r, c)[0], y=grid.grid_to_world(r, c)[1])
         for r, c in path_rc

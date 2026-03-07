@@ -8,6 +8,7 @@ try:
 except ImportError:
     pb = None
 
+from backend.schemas.world import WorldObject
 from backend.simulator.actions import RobotAction
 from backend.simulator.robot import Robot, RobotPose
 from backend.simulator.world_builder import build_world, BuiltWorld
@@ -97,6 +98,24 @@ class SimulationEnvironment:
         if self._world is None:
             raise RuntimeError("Environment not initialized")
         return list(self._world.obstacle_positions)
+
+    def get_obstacle_types(self) -> List[str]:
+        """Return list of obstacle type labels (same order as get_obstacles())."""
+        if self._world is None:
+            raise RuntimeError("Environment not initialized")
+        return list(self._world.obstacle_types)
+
+    def get_obstacle_objects(self) -> List[WorldObject]:
+        """Return typed obstacle descriptors (single source of truth)."""
+        if self._world is None:
+            raise RuntimeError("Environment not initialized")
+        return list(self._world.obstacle_objects)
+
+    def get_target_object(self) -> WorldObject:
+        """Return typed target descriptor."""
+        if self._world is None:
+            raise RuntimeError("Environment not initialized")
+        return self._world.target_object
 
     def get_target_pose(self) -> TargetPose:
         if self._world is None:

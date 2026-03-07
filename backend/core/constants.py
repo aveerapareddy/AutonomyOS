@@ -16,3 +16,7 @@ BENCHMARK_STATUS_PENDING = "pending"
 BENCHMARK_STATUS_RUNNING = "running"
 BENCHMARK_STATUS_COMPLETED = "completed"
 BENCHMARK_STATUS_FAILED = "failed"
+
+# Perception confidence defaults (Phase-1 rule-based uses these; evolve for YOLO).
+TARGET_CONFIDENCE_DEFAULT = 1.0
+OBSTACLE_CONFIDENCE_DEFAULT = 1.0
