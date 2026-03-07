@@ -6,12 +6,8 @@ from pathlib import Path
 # Allow importing backend when run as script from repo root.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from backend.simulator.environment import (
-    ACTION_FORWARD,
-    ACTION_TURN_LEFT,
-    ACTION_TURN_RIGHT,
-    SimulationEnvironment,
-)
+from backend.simulator.actions import RobotAction
+from backend.simulator.environment import SimulationEnvironment
 
 
 def main() -> None:
@@ -21,16 +17,16 @@ def main() -> None:
         print("Target:", env.get_target_pose().as_tuple())
 
         steps = [
-            (ACTION_FORWARD, 60),
-            (ACTION_TURN_LEFT, 40),
-            (ACTION_FORWARD, 40),
-            (ACTION_TURN_RIGHT, 20),
-            (ACTION_FORWARD, 30),
+            (RobotAction.FORWARD, 60),
+            (RobotAction.TURN_LEFT, 40),
+            (RobotAction.FORWARD, 40),
+            (RobotAction.TURN_RIGHT, 20),
+            (RobotAction.FORWARD, 30),
         ]
         for action, count in steps:
             for _ in range(count):
                 env.step(action)
-            print(f"After {action} x{count}: {env.get_robot_pose().as_tuple()}")
+            print(f"After {action.value} x{count}: {env.get_robot_pose().as_tuple()}")
 
     finally:
         env.shutdown()

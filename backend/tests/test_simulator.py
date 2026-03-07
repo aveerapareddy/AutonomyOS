@@ -39,15 +39,13 @@ def test_target_exists() -> None:
 
 @pytest.mark.skipif(not PYBULLET_AVAILABLE, reason="pybullet not installed")
 def test_robot_pose_after_step() -> None:
-    from backend.simulator.environment import (
-        ACTION_FORWARD,
-        SimulationEnvironment,
-    )
+    from backend.simulator.actions import RobotAction
+    from backend.simulator.environment import SimulationEnvironment
 
     env = SimulationEnvironment(use_gui=False)
     try:
         for _ in range(10):
-            env.step(ACTION_FORWARD)
+            env.step(RobotAction.FORWARD)
         pose = env.get_robot_pose()
         assert pose.x > 0
         assert pose.y == 0.0

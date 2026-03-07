@@ -10,14 +10,21 @@ except ImportError:
     pb = None
 
 
+# World bounds (min_x, max_x, min_y, max_y). Fixed for reproducibility.
+WORLD_BOUNDS = (-10.0, 10.0, -10.0, 10.0)
+
+
 @dataclass
 class BuiltWorld:
-    """Ids and positions of built world elements."""
+    """Ids and 2D positions of built world elements."""
 
     ground_id: int
     obstacle_ids: List[int]
+    obstacle_positions: List[Tuple[float, float]]
     target_id: int
-    target_position: Tuple[float, float, float]
+    target_position: Tuple[float, float]
+    target_z: float
+    world_bounds: Tuple[float, float, float, float]
 
 
 # Fixed layout for reproducibility. Parameterize later for scenario generation.
@@ -29,6 +36,11 @@ _WALL_HALF_X = 0.3
 _WALL_HALF_Y = 4.0
 _WALL_HALF_Z = 0.5
 
+# Obstacle (x, y) positions; z comes from half extents.
+_WALL_LEFT_XY = (-3.0, 0.0)
+_WALL_RIGHT_XY = (3.0, 0.0)
+_BLOCK_XY = (1.0, 1.0)
+
 
 def build_world() -> BuiltWorld:
     """
@@ -39,14 +51,17 @@ def build_world() -> BuiltWorld:
         raise RuntimeError("pybullet is not installed")
 
     ground_id = _create_ground()
-    obstacle_ids = _create_obstacles()
-    target_id, target_position = _create_target()
+    obstacle_ids, obstacle_positions = _create_obstacles()
+    target_id, target_position_2d, target_z = _create_target()
 
     return BuiltWorld(
         ground_id=ground_id,
         obstacle_ids=obstacle_ids,
+        obstacle_positions=obstacle_positions,
         target_id=target_id,
-        target_position=target_position,
+        target_position=target_position_2d,
+        target_z=target_z,
+        world_bounds=WORLD_BOUNDS,
     )
 
 
@@ -56,45 +71,48 @@ def _create_ground() -> int:
     return body
 
 
-def _create_obstacles() -> List[int]:
+def _create_obstacles() -> Tuple[List[int], List[Tuple[float, float]]]:
     """Aisle-like barriers: two parallel walls, one block."""
-    ids_ = []
+    ids_: List[int] = []
+    positions: List[Tuple[float, float]] = []
     shape = pb.createCollisionShape(
         pb.GEOM_BOX,
         halfExtents=[_WALL_HALF_X, _WALL_HALF_Y, _WALL_HALF_Z],
     )
-    # Left wall
     ids_.append(
         pb.createMultiBody(
             0,
             shape,
-            basePosition=(-3.0, 0.0, _WALL_HALF_Z),
+            basePosition=(_WALL_LEFT_XY[0], _WALL_LEFT_XY[1], _WALL_HALF_Z),
         )
     )
-    # Right wall
+    positions.append(_WALL_LEFT_XY)
     ids_.append(
         pb.createMultiBody(
             0,
             shape,
-            basePosition=(3.0, 0.0, _WALL_HALF_Z),
+            basePosition=(_WALL_RIGHT_XY[0], _WALL_RIGHT_XY[1], _WALL_HALF_Z),
         )
     )
-    # Block in the way
+    positions.append(_WALL_RIGHT_XY)
     block = pb.createCollisionShape(pb.GEOM_BOX, halfExtents=_OBSTACLE_HALF)
     ids_.append(
         pb.createMultiBody(
             0,
             block,
-            basePosition=(1.0, 1.0, _OBSTACLE_HALF[2]),
+            basePosition=(_BLOCK_XY[0], _BLOCK_XY[1], _OBSTACLE_HALF[2]),
         )
     )
-    return ids_
+    positions.append(_BLOCK_XY)
+    return ids_, positions
 
 
-def _create_target() -> Tuple[int, Tuple[float, float, float]]:
-    """One red cube at a fixed position."""
+def _create_target() -> Tuple[int, Tuple[float, float], float]:
+    """One red cube at a fixed position. Returns (body_id, (x, y), z)."""
     half = _TARGET_HALF
-    position = (_TARGET_XY[0], _TARGET_XY[1], half[2])
+    x, y = _TARGET_XY
+    z = half[2]
+    position_3d = (x, y, z)
     col = pb.createCollisionShape(pb.GEOM_BOX, halfExtents=half)
     vis = pb.createVisualShape(
         pb.GEOM_BOX,
@@ -105,6 +123,6 @@ def _create_target() -> Tuple[int, Tuple[float, float, float]]:
         0,
         col,
         vis,
-        basePosition=position,
+        basePosition=position_3d,
     )
-    return body, position
+    return body, (x, y), z
