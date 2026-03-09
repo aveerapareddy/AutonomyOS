@@ -96,6 +96,7 @@ def plan_path(
             path_found=True,
             waypoints=[Waypoint(x=x, y=y)],
             path_length=1,
+            path_length_raw=1,
         )
     path_rc = _astar(grid, start_rc, goal_rc)
     if not path_rc:
@@ -103,8 +104,10 @@ def plan_path(
             path_found=False,
             waypoints=[],
             path_length=0,
+            path_length_raw=0,
             message="No path found",
         )
+    path_length_raw = len(path_rc)
     path_rc = _simplify_path(path_rc)
     waypoints = [
         Waypoint(x=grid.grid_to_world(r, c)[0], y=grid.grid_to_world(r, c)[1])
@@ -114,4 +117,5 @@ def plan_path(
         path_found=True,
         waypoints=waypoints,
         path_length=len(waypoints),
+        path_length_raw=path_length_raw,
     )

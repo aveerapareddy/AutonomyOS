@@ -124,6 +124,8 @@ class OrchestratorService:
                 message=nav_result.message or "No path found",
             )
 
+        path_length_raw = nav_result.path_length_raw
+
         self._telemetry_service.record(
             mission_id,
             TelemetryEventType.PATH_COMPUTED,
@@ -154,6 +156,7 @@ class OrchestratorService:
                 detected_target={"x": target.x, "y": target.y, "object_type": target.object_type},
                 path_found=True,
                 waypoint_count=nav_result.path_length,
+                path_length_raw=path_length_raw,
                 telemetry_count=len(events),
                 message=f"Execution failed: {e}",
             )
@@ -173,6 +176,7 @@ class OrchestratorService:
                 detected_target={"x": target.x, "y": target.y, "object_type": target.object_type},
                 path_found=True,
                 waypoint_count=nav_result.path_length,
+                path_length_raw=path_length_raw,
                 telemetry_count=len(events),
                 message=execution_result.message,
                 execution_steps=execution_result.execution_steps,
@@ -195,6 +199,7 @@ class OrchestratorService:
             detected_target={"x": target.x, "y": target.y, "object_type": target.object_type},
             path_found=True,
             waypoint_count=nav_result.path_length,
+            path_length_raw=path_length_raw,
             telemetry_count=len(events),
             execution_steps=execution_result.execution_steps,
             final_robot_position=execution_result.final_robot_position,
@@ -209,6 +214,7 @@ class OrchestratorService:
         path_found: bool,
         detected_target: Optional[dict] = None,
         waypoint_count: int = 0,
+        path_length_raw: Optional[int] = None,
         telemetry_count: Optional[int] = None,
         message: Optional[str] = None,
         execution_steps: Optional[list] = None,
@@ -224,6 +230,7 @@ class OrchestratorService:
             detected_target=detected_target,
             path_found=path_found,
             waypoint_count=waypoint_count,
+            path_length_raw=path_length_raw,
             telemetry_count=telemetry_count,
             message=message,
             execution_steps=execution_steps or [],

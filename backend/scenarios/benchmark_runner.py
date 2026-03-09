@@ -74,6 +74,9 @@ def run_benchmark(
             results.append(
                 ScenarioBenchmarkResult(
                     scenario_id=scenario.scenario_id,
+                    scenario_name=scenario.scenario_name,
+                    robot_start_position=scenario.robot_start_position,
+                    target_position=scenario.target_position,
                     success=False,
                     path_found=False,
                     message="Mission not found",
@@ -83,15 +86,20 @@ def run_benchmark(
 
         path_found = summary.path_found
         waypoint_count = summary.waypoint_count
+        path_length_raw = getattr(summary, "path_length_raw", None)
         execution_steps = len(summary.execution_steps) if summary.execution_steps else 0
         success = summary.status == "completed"
 
         results.append(
             ScenarioBenchmarkResult(
                 scenario_id=scenario.scenario_id,
+                scenario_name=scenario.scenario_name,
+                robot_start_position=scenario.robot_start_position,
+                target_position=scenario.target_position,
                 success=success,
                 path_found=path_found,
                 waypoint_count=waypoint_count,
+                path_length_raw=path_length_raw,
                 execution_steps=execution_steps,
                 message=summary.message,
             )

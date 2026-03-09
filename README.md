@@ -42,6 +42,9 @@ The repository currently provides:
 - **Replay API for reconstructing mission execution history** — GET `/missions/{mission_id}/replay` returns MissionReplay (mission_id, frame_count, frames); 404 if mission not found.
 - **Scenario generation** — Deterministic generator produces N warehouse-like ScenarioConfigs (world_bounds, obstacles, target, robot_start); seed for reproducibility.
 - **Benchmark execution foundation** — BenchmarkRunner runs full pipeline per scenario; BenchmarkService generates scenarios and runs benchmark; aggregate metrics (success_rate, average_waypoint_count, average_execution_steps) and per-scenario results.
+- **Scenario-specific robot start positions** — Benchmark and orchestrator use robot_start_provider; execution spawns robot at scenario start; generator varies start pose per scenario.
+- **Obstacle-inflated occupancy planning** — Grid build supports configurable inflation_radius (grid cells); tests can set 0 for tight tests; default adds safety margin.
+- **Simplified waypoint generation** — A* path is simplified by collapsing collinear waypoints; NavigationResult exposes path_length_raw and path_length; benchmark results include path_length_raw per scenario.
 
 **Simulator architecture**
 
@@ -50,8 +53,8 @@ The repository currently provides:
 - **world_builder.py** — Builds a deterministic scene: ground plane, two walls, one block, one red target cube. Returns a `BuiltWorld` with `ground_id`, `obstacle_ids`, `obstacle_positions`, `obstacle_types` (wall/block), `target_id`, `target_position` (2D), `target_z`, and `world_bounds` (min_x, max_x, min_y, max_y).
 - **robot.py** — Kinematic robot (box body); maintains (x, y, theta) and syncs to PyBullet; exposes `forward`, `backward`, `turn_left`, `turn_right`, `stop` and `get_pose()`.
 - **environment.py** — Connects to PyBullet (DIRECT or GUI), builds world, spawns robot. Exposes `reset()`, `step(RobotAction)`, `get_robot_pose()`, `get_world_bounds()`, `get_obstacles()`, `get_obstacle_types()`, `get_target_pose()`, `shutdown()`. No API or mission coupling.
-- **grid_map.py** — Builds a 2D occupancy grid from world bounds and obstacle positions; `world_to_grid`, `grid_to_world`, `is_blocked`, `neighbors` for path planning.
-- **agents/navigation_agent.py** — A* path planning on an occupancy grid; accepts start/goal in world coords, returns world-space waypoints.
+- **grid_map.py** — Builds a 2D occupancy grid from world bounds and obstacle positions; configurable `inflation_radius` (grid cells); `world_to_grid`, `grid_to_world`, `is_blocked`, `neighbors` for path planning.
+- **agents/navigation_agent.py** — A* path planning on an occupancy grid; collinear waypoint simplification; returns world-space waypoints with path_length and path_length_raw.
 - **agents/perception_agent.py** — Rule-based perception from world metadata; returns `PerceptionResult` (targets, obstacles); swappable with YOLO later.
 - **schemas/navigation.py** — Waypoint, NavigationRequest, NavigationResult.
 - **schemas/perception.py** — DetectedObject, PerceptionRequest, PerceptionResult.
@@ -164,8 +167,8 @@ Mission API tests always run; simulator tests are skipped if PyBullet is not ins
 - Open-loop execution only; robot follows planned waypoints with no obstacle avoidance during motion.
 - No dynamic obstacle handling; world is static at plan time.
 - No replanning during movement; one plan per execute.
-- Fixed robot start pose (0, 0); no injection from world or mission yet.
-- Static world layout only; single fixed warehouse layout, world_id not used.
+- Default mission path uses robot start (0, 0) unless a robot_start_provider is supplied (e.g. benchmark scenarios).
+- Static world layout only for non-benchmark missions; single fixed warehouse layout, world_id not used.
 - Planner is deterministic, not LLM-based yet; plan steps are keyword-derived.
 - Static planning only; world is fixed at plan time.
 - Path simplification is collinear-only (reduces straight-line noise); no curve fitting or smoothing.
@@ -175,7 +178,7 @@ Mission API tests always run; simulator tests are skipped if PyBullet is not ins
 - No continuous playback or interpolation between frames.
 - Replay depends on telemetry payload completeness (robot_position, target_position when payload includes them).
 - No event filtering yet; replay returns all events as frames.
-- Backlog: replace hardcoded robot start (0, 0) with robot_start_provider or world-layout metadata; plan steps to become typed (structured) later; include target_x/target_y in execution event payloads (execution_started, waypoint_reached, mission_completed) so replay frames get target_position for UI.
+- Backlog: plan steps to become typed (structured); include target_x/target_y in execution event payloads so replay frames get target_position for UI.
 
 ## Roadmap
 

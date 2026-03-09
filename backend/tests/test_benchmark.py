@@ -63,7 +63,26 @@ def test_benchmark_per_scenario_results_returned() -> None:
     assert len(data["scenario_results"]) == 1
     r = data["scenario_results"][0]
     assert "scenario_id" in r
+    assert "scenario_name" in r
+    assert "robot_start_position" in r
+    assert "target_position" in r
     assert "success" in r
     assert "path_found" in r
     assert "waypoint_count" in r
     assert "execution_steps" in r
+
+
+def test_benchmark_scenario_robot_start_honored() -> None:
+    """Scenario results include scenario_name, robot_start_position, target_position from config."""
+    scenarios = generate_scenarios(count=2, seed=42)
+    resp = client.post(
+        "/benchmarks/run",
+        json={"benchmark_name": "start_test", "scenario_count": 2, "seed": 42},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data["scenario_results"]) == 2
+    for i, r in enumerate(data["scenario_results"]):
+        assert r["scenario_name"] == scenarios[i].scenario_name
+        assert r["robot_start_position"] == list(scenarios[i].robot_start_position)
+        assert r["target_position"] == list(scenarios[i].target_position)

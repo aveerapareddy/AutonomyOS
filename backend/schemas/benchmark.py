@@ -1,6 +1,6 @@
 """Benchmark run request and result schemas."""
 
-from typing import Optional
+from typing import Optional, Tuple
 
 from pydantic import BaseModel, Field
 
@@ -17,9 +17,13 @@ class ScenarioBenchmarkResult(BaseModel):
     """Result of running one scenario in a benchmark."""
 
     scenario_id: str
+    scenario_name: str = ""
+    robot_start_position: Tuple[float, float, float] = (0.0, 0.0, 0.0)
+    target_position: Tuple[float, float] = (0.0, 0.0)
     success: bool
     path_found: bool
     waypoint_count: int = 0
+    path_length_raw: Optional[int] = None
     execution_steps: int = 0
     message: Optional[str] = None
 

@@ -19,4 +19,5 @@ class NavigationResult(BaseModel):
     path_found: bool
     waypoints: list[Waypoint] = Field(default_factory=list)
     path_length: int = 0
+    path_length_raw: int = 0
     message: str | None = None

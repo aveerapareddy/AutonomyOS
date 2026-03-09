@@ -32,6 +32,7 @@ class MissionExecutionSummary(BaseModel):
     detected_target: Optional[dict[str, Any]] = None
     path_found: bool = False
     waypoint_count: int = 0
+    path_length_raw: Optional[int] = None
     telemetry_count: int = 0
     message: Optional[str] = None
     execution_steps: list[ExecutionStep] = Field(default_factory=list)
