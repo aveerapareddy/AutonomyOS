@@ -40,6 +40,8 @@ The repository currently provides:
 - **Replay foundation built from telemetry events** — Replay is a view over telemetry; no separate store. Sequence primary, timestamp secondary for ordering.
 - **Decision-trace frames derived from mission telemetry** — ReplayFrame (index, event_type, source_component, timestamp, robot_position, target_position, payload) per event.
 - **Replay API for reconstructing mission execution history** — GET `/missions/{mission_id}/replay` returns MissionReplay (mission_id, frame_count, frames); 404 if mission not found.
+- **Scenario generation** — Deterministic generator produces N warehouse-like ScenarioConfigs (world_bounds, obstacles, target, robot_start); seed for reproducibility.
+- **Benchmark execution foundation** — BenchmarkRunner runs full pipeline per scenario; BenchmarkService generates scenarios and runs benchmark; aggregate metrics (success_rate, average_waypoint_count, average_execution_steps) and per-scenario results.
 
 **Simulator architecture**
 
@@ -61,12 +63,12 @@ Run all commands from the repository root (the directory containing `backend/` a
 | Directory | Purpose |
 |-----------|---------|
 | `backend/` | Python package for the service and simulation. |
-| `backend/api/` | FastAPI app, routes (missions, telemetry, replay), dependencies. |
-| `backend/services/` | Business logic (mission lifecycle, orchestrator, orchestration, execution/sim run, telemetry, replay). |
+| `backend/api/` | FastAPI app, routes (missions, telemetry, replay, benchmarks), dependencies. |
+| `backend/services/` | Business logic (mission lifecycle, orchestrator, orchestration, execution/sim run, telemetry, replay, benchmark). |
 | `backend/schemas/` | Pydantic models (missions, execution, telemetry, replay, perception, navigation, benchmark). |
+| `backend/scenarios/` | Scenario config, deterministic generator, benchmark runner. |
 | `backend/simulator/` | PyBullet world, robot, environment, occupancy grid. |
 | `backend/agents/` | Navigation agent (A*), perception agent (rule-based from world metadata). |
-| `backend/scenarios/` | Reserved for scenario generation (not yet implemented). |
 | `backend/storage/` | Storage abstractions and repository implementations. |
 | `scripts/` | One-off and demo scripts (e.g. simulator demo). |
 
@@ -91,7 +93,7 @@ pip install -r backend/requirements.txt
 uvicorn backend.api.main:app --reload
 ```
 
-API base URL: `http://127.0.0.1:8000` (or the host/port you configure). Health: `GET /health`. Missions: `POST /missions`, `GET /missions/{mission_id}`. Execute: `POST /missions/{mission_id}/execute` (runs plan-perceive-navigate and waypoint execution in sim; returns summary). Telemetry: `GET /missions/{mission_id}/telemetry`. Replay: `GET /missions/{mission_id}/replay`.
+API base URL: `http://127.0.0.1:8000` (or the host/port you configure). Health: `GET /health`. Missions: `POST /missions`, `GET /missions/{mission_id}`. Execute: `POST /missions/{mission_id}/execute` (runs plan-perceive-navigate and waypoint execution in sim; returns summary). Telemetry: `GET /missions/{mission_id}/telemetry`. Replay: `GET /missions/{mission_id}/replay`. Benchmarks: `POST /benchmarks/run` (body: `benchmark_name`, `scenario_count`, optional `seed`; returns BenchmarkSummary).
 
 **Simulator demo**
 

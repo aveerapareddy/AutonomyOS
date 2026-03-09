@@ -2,6 +2,7 @@
 
 from fastapi import FastAPI
 
+from backend.api.routes.benchmarks import router as benchmarks_router
 from backend.api.routes.missions import router as missions_router
 from backend.api.routes.replay import router as replay_router
 from backend.api.routes.telemetry import router as telemetry_router
@@ -32,3 +33,4 @@ def health() -> dict[str, str]:
 app.include_router(missions_router)
 app.include_router(telemetry_router)
 app.include_router(replay_router)
+app.include_router(benchmarks_router)

@@ -2,6 +2,7 @@
 
 from typing import Optional
 
+from backend.services.benchmark_service import BenchmarkService
 from backend.services.mission_service import MissionService
 from backend.services.mission_orchestrator import MissionOrchestrator
 from backend.services.orchestrator_service import OrchestratorService
@@ -11,6 +12,14 @@ from backend.storage.repositories.mission_repository import InMemoryMissionRepos
 
 _mission_repository: Optional[InMemoryMissionRepository] = None
 _telemetry_service: Optional[TelemetryService] = None
+
+
+def get_benchmark_service() -> BenchmarkService:
+    """Provide benchmark service."""
+    return BenchmarkService(
+        mission_service=get_mission_service(),
+        telemetry_service=get_telemetry_service(),
+    )
 
 
 def get_replay_service() -> ReplayService:

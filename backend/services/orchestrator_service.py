@@ -19,9 +19,7 @@ from backend.services.telemetry_service import TelemetryService
 from backend.simulator.grid_map import build_occupancy_grid
 from backend.simulator.world_builder import get_world_layout
 
-# Robot start pose. Backlog: replace with robot_start_provider or world-layout metadata.
-ROBOT_START_X = 0.0
-ROBOT_START_Y = 0.0
+DEFAULT_ROBOT_START: Tuple[float, float, float] = (0.0, 0.0, 0.0)
 
 
 def _rule_based_plan(mission_text: str) -> List[str]:
@@ -49,10 +47,12 @@ class OrchestratorService:
         world_layout_provider: Optional[
             Callable[[], Tuple[Tuple[float, float, float, float], List[WorldObject], WorldObject]]
         ] = None,
+        robot_start_provider: Optional[Callable[[], Tuple[float, float, float]]] = None,
     ) -> None:
         self._mission_service = mission_service
         self._telemetry_service = telemetry_service
         self._get_layout = world_layout_provider or get_world_layout
+        self._get_robot_start = robot_start_provider
 
     def execute(self, mission_id: str) -> Optional[MissionExecutionSummary]:
         """Run pipeline for the mission. Returns None if mission not found."""
@@ -94,12 +94,16 @@ class OrchestratorService:
             {"target_id": target.object_id, "target_x": target.x, "target_y": target.y},
         )
 
+        robot_start = (
+            self._get_robot_start() if self._get_robot_start else DEFAULT_ROBOT_START
+        )
+        start_x, start_y, _ = robot_start
         obstacle_positions = [(o.x, o.y) for o in obstacle_objects]
         grid = build_occupancy_grid(world_bounds, obstacle_positions)
         nav_result = plan_path(
             grid,
-            ROBOT_START_X,
-            ROBOT_START_Y,
+            start_x,
+            start_y,
             target.x,
             target.y,
         )
@@ -130,7 +134,10 @@ class OrchestratorService:
         execution_result = None
         try:
             execution_result = run_sim_execution(
-                mission_id, nav_result.waypoints, self._telemetry_service
+                mission_id,
+                nav_result.waypoints,
+                self._telemetry_service,
+                robot_start=robot_start,
             )
         except (RuntimeError, ImportError) as e:
             self._telemetry_service.record(
