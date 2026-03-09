@@ -3,6 +3,7 @@
 from fastapi.testclient import TestClient
 
 from backend.api.main import app
+from backend.scenarios.benchmark_runner import _world_layout_spec_from_scenario
 from backend.scenarios.generator import generate_scenarios
 
 client = TestClient(app)
@@ -86,3 +87,20 @@ def test_benchmark_scenario_robot_start_honored() -> None:
         assert r["scenario_name"] == scenarios[i].scenario_name
         assert r["robot_start_position"] == list(scenarios[i].robot_start_position)
         assert r["target_position"] == list(scenarios[i].target_position)
+
+
+def test_benchmark_execution_uses_scenario_geometry() -> None:
+    """Scenario config maps to world layout spec; benchmark runs with scenario-driven sim."""
+    scenarios = generate_scenarios(count=1, seed=99)
+    spec = _world_layout_spec_from_scenario(scenarios[0])
+    assert spec.target_position == scenarios[0].target_position
+    assert spec.world_bounds == scenarios[0].world_bounds
+    assert len(spec.obstacle_positions) == len(scenarios[0].obstacle_positions)
+    resp = client.post(
+        "/benchmarks/run",
+        json={"benchmark_name": "geometry_test", "scenario_count": 1, "seed": 99},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data["scenario_results"]) == 1
+    assert data["scenario_results"][0]["target_position"] == list(spec.target_position)

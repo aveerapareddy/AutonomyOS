@@ -17,6 +17,16 @@ WORLD_BOUNDS = (-10.0, 10.0, -10.0, 10.0)
 
 
 @dataclass
+class WorldLayoutSpec:
+    """Layout description for scenario-driven world build. No PyBullet dependency."""
+
+    world_bounds: Tuple[float, float, float, float]
+    obstacle_positions: List[Tuple[float, float]]
+    obstacle_types: List[str]
+    target_position: Tuple[float, float]
+
+
+@dataclass
 class BuiltWorld:
     """Ids, typed world objects, and derived lists for backward compat."""
 
@@ -90,6 +100,79 @@ def build_world() -> BuiltWorld:
         target_z=target_z,
         world_bounds=WORLD_BOUNDS,
     )
+
+
+_OBSTACLE_HALF_GENERIC = (0.5, 0.5, 0.5)
+
+
+def build_world_from_config(spec: WorldLayoutSpec) -> BuiltWorld:
+    """
+    Create a flat world from a layout spec (e.g. scenario-driven).
+    Deterministic for the same spec.
+    """
+    if pb is None:
+        raise RuntimeError("pybullet is not installed")
+
+    ground_id = _create_ground()
+    obstacle_ids, obstacle_objects = _create_obstacles_from_spec(spec)
+    target_id, target_position_2d, target_z = _create_target_from_spec(spec)
+    target_object = WorldObject(
+        object_id="target",
+        object_type="target",
+        x=target_position_2d[0],
+        y=target_position_2d[1],
+    )
+    obstacle_positions = list(spec.obstacle_positions)
+    obstacle_types = list(spec.obstacle_types)
+    if len(obstacle_types) < len(obstacle_positions):
+        obstacle_types.extend(["obstacle"] * (len(obstacle_positions) - len(obstacle_types)))
+
+    return BuiltWorld(
+        ground_id=ground_id,
+        obstacle_ids=obstacle_ids,
+        obstacle_objects=obstacle_objects,
+        obstacle_positions=obstacle_positions,
+        obstacle_types=obstacle_types,
+        target_id=target_id,
+        target_object=target_object,
+        target_position=target_position_2d,
+        target_z=target_z,
+        world_bounds=spec.world_bounds,
+    )
+
+
+def _create_obstacles_from_spec(spec: WorldLayoutSpec) -> Tuple[List[int], List[WorldObject]]:
+    ids_: List[int] = []
+    objects_: List[WorldObject] = []
+    half = _OBSTACLE_HALF_GENERIC
+    shape = pb.createCollisionShape(pb.GEOM_BOX, halfExtents=half)
+    types = list(spec.obstacle_types)
+    if len(types) < len(spec.obstacle_positions):
+        types.extend(["obstacle"] * (len(spec.obstacle_positions) - len(types)))
+    for i, (pos, typ) in enumerate(zip(spec.obstacle_positions, types)):
+        x, y = pos
+        body_id = pb.createMultiBody(
+            0,
+            shape,
+            basePosition=(x, y, half[2]),
+        )
+        ids_.append(body_id)
+        objects_.append(WorldObject(object_id=f"obstacle_{i}", object_type=typ, x=x, y=y))
+    return ids_, objects_
+
+
+def _create_target_from_spec(spec: WorldLayoutSpec) -> Tuple[int, Tuple[float, float], float]:
+    half = _TARGET_HALF
+    x, y = spec.target_position
+    z = half[2]
+    col = pb.createCollisionShape(pb.GEOM_BOX, halfExtents=half)
+    vis = pb.createVisualShape(
+        pb.GEOM_BOX,
+        halfExtents=half,
+        rgbaColor=(0.9, 0.2, 0.2, 1.0),
+    )
+    body = pb.createMultiBody(0, col, vis, basePosition=(x, y, z))
+    return body, (x, y), z
 
 
 def _create_ground() -> int:

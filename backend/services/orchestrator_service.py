@@ -17,7 +17,7 @@ from backend.services.execution_service import run_sim_execution
 from backend.services.mission_service import MissionService
 from backend.services.telemetry_service import TelemetryService
 from backend.simulator.grid_map import build_occupancy_grid
-from backend.simulator.world_builder import get_world_layout
+from backend.simulator.world_builder import WorldLayoutSpec, get_world_layout
 
 DEFAULT_ROBOT_START: Tuple[float, float, float] = (0.0, 0.0, 0.0)
 
@@ -48,11 +48,13 @@ class OrchestratorService:
             Callable[[], Tuple[Tuple[float, float, float, float], List[WorldObject], WorldObject]]
         ] = None,
         robot_start_provider: Optional[Callable[[], Tuple[float, float, float]]] = None,
+        execution_world_layout_provider: Optional[Callable[[], WorldLayoutSpec]] = None,
     ) -> None:
         self._mission_service = mission_service
         self._telemetry_service = telemetry_service
         self._get_layout = world_layout_provider or get_world_layout
         self._get_robot_start = robot_start_provider
+        self._get_execution_world_layout = execution_world_layout_provider
 
     def execute(self, mission_id: str) -> Optional[MissionExecutionSummary]:
         """Run pipeline for the mission. Returns None if mission not found."""
@@ -133,6 +135,11 @@ class OrchestratorService:
             {"waypoint_count": nav_result.path_length},
         )
 
+        execution_world_layout = (
+            self._get_execution_world_layout()
+            if self._get_execution_world_layout
+            else None
+        )
         execution_result = None
         try:
             execution_result = run_sim_execution(
@@ -140,6 +147,7 @@ class OrchestratorService:
                 nav_result.waypoints,
                 self._telemetry_service,
                 robot_start=robot_start,
+                world_layout=execution_world_layout,
             )
         except (RuntimeError, ImportError) as e:
             self._telemetry_service.record(

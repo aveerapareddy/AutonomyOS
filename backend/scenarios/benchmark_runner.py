@@ -10,6 +10,19 @@ from backend.scenarios.scenario_config import ScenarioConfig
 from backend.services.mission_service import MissionService
 from backend.services.orchestrator_service import OrchestratorService
 from backend.services.telemetry_service import TelemetryService
+from backend.simulator.world_builder import WorldLayoutSpec
+
+# Backlog: single scenario adapter so planning layout and WorldLayoutSpec share one conversion.
+
+
+def _world_layout_spec_from_scenario(scenario: ScenarioConfig) -> WorldLayoutSpec:
+    """ScenarioConfig to WorldLayoutSpec for simulator world build."""
+    return WorldLayoutSpec(
+        world_bounds=scenario.world_bounds,
+        obstacle_positions=list(scenario.obstacle_positions),
+        obstacle_types=list(scenario.obstacle_types),
+        target_position=scenario.target_position,
+    )
 
 
 def _layout_from_scenario(
@@ -62,11 +75,15 @@ def run_benchmark(
         def get_robot_start() -> Tuple[float, float, float]:
             return scenario.robot_start_position
 
+        def get_execution_world_layout() -> WorldLayoutSpec:
+            return _world_layout_spec_from_scenario(scenario)
+
         orchestrator = OrchestratorService(
             mission_service=mission_service,
             telemetry_service=telemetry_service,
             world_layout_provider=layout_provider,
             robot_start_provider=get_robot_start,
+            execution_world_layout_provider=get_execution_world_layout,
         )
         summary = orchestrator.execute(mission_resp.mission_id)
 

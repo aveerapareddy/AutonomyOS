@@ -45,14 +45,16 @@ The repository currently provides:
 - **Scenario-specific robot start positions** — Benchmark and orchestrator use robot_start_provider; execution spawns robot at scenario start; generator varies start pose per scenario.
 - **Obstacle-inflated occupancy planning** — Grid build supports configurable inflation_radius (grid cells); tests can set 0 for tight tests; default adds safety margin.
 - **Simplified waypoint generation** — A* path is simplified by collapsing collinear waypoints; NavigationResult exposes path_length_raw and path_length; benchmark results include path_length_raw per scenario.
+- **Scenario-driven simulator world construction** — WorldLayoutSpec and build_world_from_config; SimulationEnvironment accepts optional world_layout; same layout drives planning and execution in benchmarks.
+- **Aligned planning and execution geometry** — Benchmark runs use scenario bounds, obstacles, target, and robot start for both path planning and sim execution; single source of truth per scenario.
 
 **Simulator architecture**
 
 - **actions.py** — `RobotAction` enum (forward, backward, turn_left, turn_right, stop); used by `environment.step()` and the demo.
 - **execution_engine.py** — WaypointExecutor: drives robot through waypoints (turn toward waypoint, forward until within tolerance); emits execution telemetry; ExecutionConfig (waypoint_tolerance, turn_threshold, max_steps_per_waypoint).
-- **world_builder.py** — Builds a deterministic scene: ground plane, two walls, one block, one red target cube. Returns a `BuiltWorld` with `ground_id`, `obstacle_ids`, `obstacle_positions`, `obstacle_types` (wall/block), `target_id`, `target_position` (2D), `target_z`, and `world_bounds` (min_x, max_x, min_y, max_y).
+- **world_builder.py** — Builds a deterministic scene: default `build_world()` or scenario-driven `build_world_from_config(WorldLayoutSpec)`. Returns a `BuiltWorld`; `WorldLayoutSpec` carries bounds, obstacle_positions, obstacle_types, target_position (no PyBullet).
 - **robot.py** — Kinematic robot (box body); maintains (x, y, theta) and syncs to PyBullet; exposes `forward`, `backward`, `turn_left`, `turn_right`, `stop` and `get_pose()`.
-- **environment.py** — Connects to PyBullet (DIRECT or GUI), builds world, spawns robot. Exposes `reset()`, `step(RobotAction)`, `get_robot_pose()`, `get_world_bounds()`, `get_obstacles()`, `get_obstacle_types()`, `get_target_pose()`, `shutdown()`. No API or mission coupling.
+- **environment.py** — Connects to PyBullet (DIRECT or GUI). Optional `world_layout: WorldLayoutSpec` builds scenario world; otherwise default world. Exposes `reset()`, `step(RobotAction)`, `get_robot_pose()`, `get_world_bounds()`, `get_obstacles()`, `get_obstacle_types()`, `get_target_pose()`, `shutdown()`. No API or mission coupling.
 - **grid_map.py** — Builds a 2D occupancy grid from world bounds and obstacle positions; configurable `inflation_radius` (grid cells); `world_to_grid`, `grid_to_world`, `is_blocked`, `neighbors` for path planning.
 - **agents/navigation_agent.py** — A* path planning on an occupancy grid; collinear waypoint simplification; returns world-space waypoints with path_length and path_length_raw.
 - **agents/perception_agent.py** — Rule-based perception from world metadata; returns `PerceptionResult` (targets, obstacles); swappable with YOLO later.
@@ -178,7 +180,7 @@ Mission API tests always run; simulator tests are skipped if PyBullet is not ins
 - No continuous playback or interpolation between frames.
 - Replay depends on telemetry payload completeness (robot_position, target_position when payload includes them).
 - No event filtering yet; replay returns all events as frames.
-- Backlog: plan steps to become typed (structured); include target_x/target_y in execution event payloads so replay frames get target_position for UI.
+- Backlog: plan steps to become typed (structured); include target_x/target_y in execution event payloads so replay frames get target_position for UI; unified scenario adapter so planning layout and simulator WorldLayoutSpec derive from one conversion path (avoid drift between _layout_from_scenario and _world_layout_spec_from_scenario).
 
 ## Roadmap
 

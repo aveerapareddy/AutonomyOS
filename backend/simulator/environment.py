@@ -11,7 +11,12 @@ except ImportError:
 from backend.schemas.world import WorldObject
 from backend.simulator.actions import RobotAction
 from backend.simulator.robot import Robot, RobotPose
-from backend.simulator.world_builder import build_world, BuiltWorld
+from backend.simulator.world_builder import (
+    BuiltWorld,
+    WorldLayoutSpec,
+    build_world,
+    build_world_from_config,
+)
 
 
 # Default sim step for deterministic behavior.
@@ -41,11 +46,13 @@ class SimulationEnvironment:
         use_gui: bool = False,
         step_dt: float = DEFAULT_STEP_DT,
         robot_start: Optional[Tuple[float, float, float]] = None,
+        world_layout: Optional[WorldLayoutSpec] = None,
     ) -> None:
         if pb is None:
             raise RuntimeError("pybullet is not installed")
         self._step_dt = step_dt
         self._robot_start = robot_start or (0.0, 0.0, 0.0)
+        self._world_layout = world_layout
         self._client_id = pb.connect(pb.GUI if use_gui else pb.DIRECT)
         pb.setGravity(0, 0, -9.81, physicsClientId=self._client_id)
         self._world: Optional[BuiltWorld] = None
@@ -53,7 +60,10 @@ class SimulationEnvironment:
         self._build()
 
     def _build(self) -> None:
-        self._world = build_world()
+        if self._world_layout is not None:
+            self._world = build_world_from_config(self._world_layout)
+        else:
+            self._world = build_world()
         sx, sy, st = self._robot_start
         self._robot = Robot.create(start_x=sx, start_y=sy, start_theta=st)
 

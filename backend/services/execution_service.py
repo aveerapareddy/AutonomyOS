@@ -7,6 +7,7 @@ from backend.schemas.navigation import Waypoint
 from backend.services.telemetry_service import TelemetryService
 from backend.simulator.execution_engine import WaypointExecutor
 from backend.simulator.environment import SimulationEnvironment
+from backend.simulator.world_builder import WorldLayoutSpec
 
 
 def run_sim_execution(
@@ -15,9 +16,14 @@ def run_sim_execution(
     telemetry_service: TelemetryService,
     use_gui: bool = False,
     robot_start: Optional[Tuple[float, float, float]] = None,
+    world_layout: Optional[WorldLayoutSpec] = None,
 ) -> ExecutionResult:
     """Create sim, run WaypointExecutor, shutdown, return result. Raises on env create failure."""
-    env = SimulationEnvironment(use_gui=use_gui, robot_start=robot_start)
+    env = SimulationEnvironment(
+        use_gui=use_gui,
+        robot_start=robot_start,
+        world_layout=world_layout,
+    )
     try:
         executor = WaypointExecutor(env, mission_id, telemetry_service)
         return executor.execute(waypoints)
