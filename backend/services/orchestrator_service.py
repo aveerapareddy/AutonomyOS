@@ -6,17 +6,17 @@ from backend.agents.navigation_agent import plan_path
 from backend.agents.perception_agent import perceive_from_objects
 from backend.core.constants import (
     TELEMETRY_SOURCE_NAVIGATION_AGENT,
+    TELEMETRY_SOURCE_ORCHESTRATOR_SERVICE,
     TELEMETRY_SOURCE_PERCEPTION_AGENT,
     TELEMETRY_SOURCE_PLANNER,
 )
 from backend.schemas.execution import MissionExecutionSummary
 from backend.schemas.telemetry import TelemetryEventType
 from backend.schemas.world import WorldObject
+from backend.services.execution_service import run_sim_execution
 from backend.services.mission_service import MissionService
 from backend.services.telemetry_service import TelemetryService
 from backend.simulator.grid_map import build_occupancy_grid
-from backend.simulator.execution_engine import WaypointExecutor
-from backend.simulator.environment import SimulationEnvironment
 from backend.simulator.world_builder import get_world_layout
 
 # Robot start pose. Backlog: replace with robot_start_provider or world-layout metadata.
@@ -75,7 +75,7 @@ class OrchestratorService:
             self._telemetry_service.record(
                 mission_id,
                 TelemetryEventType.MISSION_FAILED,
-                TELEMETRY_SOURCE_PLANNER,
+                TELEMETRY_SOURCE_ORCHESTRATOR_SERVICE,
                 {"reason": "no_target_found"},
             )
             return self._summary(
@@ -108,7 +108,7 @@ class OrchestratorService:
             self._telemetry_service.record(
                 mission_id,
                 TelemetryEventType.MISSION_FAILED,
-                TELEMETRY_SOURCE_NAVIGATION_AGENT,
+                TELEMETRY_SOURCE_ORCHESTRATOR_SERVICE,
                 {"reason": "no_path_found", "message": nav_result.message},
             )
             return self._summary(
@@ -129,15 +129,14 @@ class OrchestratorService:
 
         execution_result = None
         try:
-            env = SimulationEnvironment(use_gui=False)
-            executor = WaypointExecutor(env, mission_id, self._telemetry_service)
-            execution_result = executor.execute(nav_result.waypoints)
-            env.shutdown()
+            execution_result = run_sim_execution(
+                mission_id, nav_result.waypoints, self._telemetry_service
+            )
         except (RuntimeError, ImportError) as e:
             self._telemetry_service.record(
                 mission_id,
                 TelemetryEventType.MISSION_FAILED,
-                TELEMETRY_SOURCE_PLANNER,
+                TELEMETRY_SOURCE_ORCHESTRATOR_SERVICE,
                 {"reason": "execution_error", "message": str(e)},
             )
             events = self._telemetry_service.get_events_for_mission(mission_id)
@@ -156,7 +155,7 @@ class OrchestratorService:
             self._telemetry_service.record(
                 mission_id,
                 TelemetryEventType.MISSION_FAILED,
-                TELEMETRY_SOURCE_PLANNER,
+                TELEMETRY_SOURCE_ORCHESTRATOR_SERVICE,
                 {"reason": "execution_failed", "message": execution_result.message},
             )
             events = self._telemetry_service.get_events_for_mission(mission_id)
@@ -177,7 +176,7 @@ class OrchestratorService:
         self._telemetry_service.record(
             mission_id,
             TelemetryEventType.MISSION_COMPLETED,
-            TELEMETRY_SOURCE_PLANNER,
+            TELEMETRY_SOURCE_ORCHESTRATOR_SERVICE,
             {"waypoint_count": nav_result.path_length},
         )
 

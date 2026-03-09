@@ -21,9 +21,10 @@ BENCHMARK_STATUS_FAILED = "failed"
 TARGET_CONFIDENCE_DEFAULT = 1.0
 OBSTACLE_CONFIDENCE_DEFAULT = 1.0
 
-# Telemetry source components (replay and trace filtering).
+# Telemetry source components (replay and trace filtering). Use these exact strings.
 TELEMETRY_SOURCE_API = "api"
 TELEMETRY_SOURCE_PLANNER = "planner"
 TELEMETRY_SOURCE_PERCEPTION_AGENT = "perception_agent"
 TELEMETRY_SOURCE_NAVIGATION_AGENT = "navigation_agent"
-TELEMETRY_SOURCE_EXECUTION_AGENT = "execution_agent"
+TELEMETRY_SOURCE_EXECUTION_ENGINE = "execution_engine"
+TELEMETRY_SOURCE_ORCHESTRATOR_SERVICE = "orchestrator_service"

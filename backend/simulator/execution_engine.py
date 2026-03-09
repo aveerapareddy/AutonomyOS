@@ -4,7 +4,7 @@ import math
 from dataclasses import dataclass
 from typing import List, Optional
 
-from backend.core.constants import TELEMETRY_SOURCE_EXECUTION_AGENT
+from backend.core.constants import TELEMETRY_SOURCE_EXECUTION_ENGINE
 from backend.schemas.execution import ExecutionResult, ExecutionStep
 from backend.schemas.navigation import Waypoint
 from backend.schemas.telemetry import TelemetryEventType
@@ -65,7 +65,7 @@ class WaypointExecutor:
         self._telemetry.record(
             self._mission_id,
             TelemetryEventType.EXECUTION_STARTED,
-            TELEMETRY_SOURCE_EXECUTION_AGENT,
+            TELEMETRY_SOURCE_EXECUTION_ENGINE,
             {
                 "waypoint_count": len(waypoints),
                 "robot_x": pose.x,
@@ -91,7 +91,7 @@ class WaypointExecutor:
                     self._telemetry.record(
                         self._mission_id,
                         TelemetryEventType.WAYPOINT_REACHED,
-                        TELEMETRY_SOURCE_EXECUTION_AGENT,
+                        TELEMETRY_SOURCE_EXECUTION_ENGINE,
                         {
                             "waypoint_index": idx,
                             "target_x": wp.x,
@@ -119,7 +119,7 @@ class WaypointExecutor:
                 self._telemetry.record(
                     self._mission_id,
                     TelemetryEventType.EXECUTION_FAILED,
-                    TELEMETRY_SOURCE_EXECUTION_AGENT,
+                    TELEMETRY_SOURCE_EXECUTION_ENGINE,
                     {
                         "reason": "max_steps_per_waypoint",
                         "waypoint_index": idx,
@@ -140,7 +140,7 @@ class WaypointExecutor:
         self._telemetry.record(
             self._mission_id,
             TelemetryEventType.EXECUTION_COMPLETED,
-            TELEMETRY_SOURCE_EXECUTION_AGENT,
+            TELEMETRY_SOURCE_EXECUTION_ENGINE,
             {
                 "waypoints_reached": len(waypoints),
                 "robot_x": pose.x,

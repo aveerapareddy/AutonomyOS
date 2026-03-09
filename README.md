@@ -32,7 +32,9 @@ The repository currently provides:
 - **Rule-based mission planning** — Keyword-derived plan steps (e.g. "red", "avoid"); no LLM yet.
 - **Perception + navigation coordination** — Orchestrator loads layout, runs perception, selects target, plans path; clear failure paths for no target / no path.
 - **Replay-ready telemetry events during execution** — plan_generated, perception_completed, path_computed, mission_completed, mission_failed with stable source_component (planner, perception_agent, navigation_agent). Success path: 5 events (mission_received at create plus 4 during execute).
-- **Waypoint execution engine for simulator-based mission runs** — WaypointExecutor drives the robot through navigation waypoints in SimulationEnvironment; emits execution_started, waypoint_reached, execution_completed, execution_failed; configurable tolerance and max steps per waypoint. Orchestrator runs execution after path planning and extends MissionExecutionSummary with execution_steps, final_robot_position, execution_status.
+- **Waypoint execution engine for simulator-based mission runs** — WaypointExecutor drives the robot through navigation waypoints; ExecutionService owns sim lifecycle (create env, run executor, shutdown). Configurable tolerance and max steps per waypoint.
+- **End-to-end mission pipeline from planning to execution** — POST execute runs plan, perceive, navigate, then sim execution; MissionExecutionSummary includes execution_steps, final_robot_position, execution_status.
+- **Execution telemetry for waypoint completion and mission status** — execution_started, waypoint_reached, execution_completed, execution_failed with source_component execution_engine; mission_completed/mission_failed from orchestrator_service. Stable source names: planner, perception_agent, navigation_agent, execution_engine, orchestrator_service.
 
 **Simulator architecture**
 
@@ -55,7 +57,7 @@ Run all commands from the repository root (the directory containing `backend/` a
 |-----------|---------|
 | `backend/` | Python package for the service and simulation. |
 | `backend/api/` | FastAPI app, routes (missions, telemetry), dependencies. |
-| `backend/services/` | Business logic (mission lifecycle, mission orchestrator, orchestration, telemetry). |
+| `backend/services/` | Business logic (mission lifecycle, mission orchestrator, orchestration, execution/sim run, telemetry). |
 | `backend/schemas/` | Pydantic models (missions, execution, telemetry, perception, navigation, benchmark). |
 | `backend/simulator/` | PyBullet world, robot, environment, occupancy grid. |
 | `backend/agents/` | Navigation agent (A*), perception agent (rule-based from world metadata). |
@@ -152,11 +154,13 @@ Mission API tests always run; simulator tests are skipped if PyBullet is not ins
 
 ## Known Limitations
 
-- Execution is open-loop (follow waypoints only; no obstacle avoidance or replanning during motion).
+- Open-loop execution only; robot follows planned waypoints with no obstacle avoidance during motion.
+- No dynamic obstacle handling; world is static at plan time.
+- No replanning during movement; one plan per execute.
+- Fixed robot start pose (0, 0); no injection from world or mission yet.
 - Static world layout only; single fixed warehouse layout, world_id not used.
-- No dynamic replanning; one plan per execute, no obstacle_detected/replan loop.
 - Planner is deterministic, not LLM-based yet; plan steps are keyword-derived.
-- Static planning only; world is fixed at plan time; no replanning or dynamic obstacles.
+- Static planning only; world is fixed at plan time.
 - Path simplification is collinear-only (reduces straight-line noise); no curve fitting or smoothing.
 - Perception: metadata-based detection only; no image-based perception yet; no tracking across frames.
 - Telemetry is in-memory only; no persistence yet.
