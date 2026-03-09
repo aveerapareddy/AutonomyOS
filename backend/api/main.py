@@ -3,6 +3,7 @@
 from fastapi import FastAPI
 
 from backend.api.routes.missions import router as missions_router
+from backend.api.routes.replay import router as replay_router
 from backend.api.routes.telemetry import router as telemetry_router
 from backend.core.logging import get_logger
 
@@ -30,3 +31,4 @@ def health() -> dict[str, str]:
 
 app.include_router(missions_router)
 app.include_router(telemetry_router)
+app.include_router(replay_router)

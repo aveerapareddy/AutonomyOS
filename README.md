@@ -35,6 +35,11 @@ The repository currently provides:
 - **Waypoint execution engine for simulator-based mission runs** — WaypointExecutor drives the robot through navigation waypoints; ExecutionService owns sim lifecycle (create env, run executor, shutdown). Configurable tolerance and max steps per waypoint.
 - **End-to-end mission pipeline from planning to execution** — POST execute runs plan, perceive, navigate, then sim execution; MissionExecutionSummary includes execution_steps, final_robot_position, execution_status.
 - **Execution telemetry for waypoint completion and mission status** — execution_started, waypoint_reached, execution_completed, execution_failed with source_component execution_engine; mission_completed/mission_failed from orchestrator_service. Stable source names: planner, perception_agent, navigation_agent, execution_engine, orchestrator_service.
+- **Mission replay foundation** — GET `/missions/{mission_id}/replay` returns event-driven replay (MissionReplay: frames from telemetry). ReplayService builds ReplayFrames from events; robot_position and target_position normalized from payloads. Telemetry is source of truth; replay is a view.
+- **Event-driven decision trace** — Each telemetry event becomes one ReplayFrame; frames preserve chronological order; milestones (execution_started, waypoint_reached, path_computed, mission_completed, etc.) appear as frames. No continuous playback or frontend UI yet.
+- **Replay foundation built from telemetry events** — Replay is a view over telemetry; no separate store. Sequence primary, timestamp secondary for ordering.
+- **Decision-trace frames derived from mission telemetry** — ReplayFrame (index, event_type, source_component, timestamp, robot_position, target_position, payload) per event.
+- **Replay API for reconstructing mission execution history** — GET `/missions/{mission_id}/replay` returns MissionReplay (mission_id, frame_count, frames); 404 if mission not found.
 
 **Simulator architecture**
 
@@ -56,9 +61,9 @@ Run all commands from the repository root (the directory containing `backend/` a
 | Directory | Purpose |
 |-----------|---------|
 | `backend/` | Python package for the service and simulation. |
-| `backend/api/` | FastAPI app, routes (missions, telemetry), dependencies. |
-| `backend/services/` | Business logic (mission lifecycle, mission orchestrator, orchestration, execution/sim run, telemetry). |
-| `backend/schemas/` | Pydantic models (missions, execution, telemetry, perception, navigation, benchmark). |
+| `backend/api/` | FastAPI app, routes (missions, telemetry, replay), dependencies. |
+| `backend/services/` | Business logic (mission lifecycle, orchestrator, orchestration, execution/sim run, telemetry, replay). |
+| `backend/schemas/` | Pydantic models (missions, execution, telemetry, replay, perception, navigation, benchmark). |
 | `backend/simulator/` | PyBullet world, robot, environment, occupancy grid. |
 | `backend/agents/` | Navigation agent (A*), perception agent (rule-based from world metadata). |
 | `backend/scenarios/` | Reserved for scenario generation (not yet implemented). |
@@ -86,7 +91,7 @@ pip install -r backend/requirements.txt
 uvicorn backend.api.main:app --reload
 ```
 
-API base URL: `http://127.0.0.1:8000` (or the host/port you configure). Health: `GET /health`. Missions: `POST /missions`, `GET /missions/{mission_id}`. Execute: `POST /missions/{mission_id}/execute` (runs plan-perceive-navigate and waypoint execution in sim; returns summary). Telemetry: `GET /missions/{mission_id}/telemetry`.
+API base URL: `http://127.0.0.1:8000` (or the host/port you configure). Health: `GET /health`. Missions: `POST /missions`, `GET /missions/{mission_id}`. Execute: `POST /missions/{mission_id}/execute` (runs plan-perceive-navigate and waypoint execution in sim; returns summary). Telemetry: `GET /missions/{mission_id}/telemetry`. Replay: `GET /missions/{mission_id}/replay`.
 
 **Simulator demo**
 
@@ -164,7 +169,11 @@ Mission API tests always run; simulator tests are skipped if PyBullet is not ins
 - Path simplification is collinear-only (reduces straight-line noise); no curve fitting or smoothing.
 - Perception: metadata-based detection only; no image-based perception yet; no tracking across frames.
 - Telemetry is in-memory only; no persistence yet.
-- Backlog: replace hardcoded robot start (0, 0) with robot_start_provider or world-layout metadata; plan steps to become typed (structured) later.
+- Event-level replay only; one frame per telemetry event.
+- No continuous playback or interpolation between frames.
+- Replay depends on telemetry payload completeness (robot_position, target_position when payload includes them).
+- No event filtering yet; replay returns all events as frames.
+- Backlog: replace hardcoded robot start (0, 0) with robot_start_provider or world-layout metadata; plan steps to become typed (structured) later; include target_x/target_y in execution event payloads (execution_started, waypoint_reached, mission_completed) so replay frames get target_position for UI.
 
 ## Roadmap
 

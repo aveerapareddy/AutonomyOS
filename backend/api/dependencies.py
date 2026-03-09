@@ -5,11 +5,17 @@ from typing import Optional
 from backend.services.mission_service import MissionService
 from backend.services.mission_orchestrator import MissionOrchestrator
 from backend.services.orchestrator_service import OrchestratorService
+from backend.services.replay_service import ReplayService
 from backend.services.telemetry_service import TelemetryService
 from backend.storage.repositories.mission_repository import InMemoryMissionRepository
 
 _mission_repository: Optional[InMemoryMissionRepository] = None
 _telemetry_service: Optional[TelemetryService] = None
+
+
+def get_replay_service() -> ReplayService:
+    """Provide replay service (builds replay from telemetry)."""
+    return ReplayService(telemetry_service=get_telemetry_service())
 
 
 def get_orchestrator_service() -> OrchestratorService:
