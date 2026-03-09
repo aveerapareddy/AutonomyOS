@@ -4,11 +4,20 @@ from typing import Optional
 
 from backend.services.mission_service import MissionService
 from backend.services.mission_orchestrator import MissionOrchestrator
+from backend.services.orchestrator_service import OrchestratorService
 from backend.services.telemetry_service import TelemetryService
 from backend.storage.repositories.mission_repository import InMemoryMissionRepository
 
 _mission_repository: Optional[InMemoryMissionRepository] = None
 _telemetry_service: Optional[TelemetryService] = None
+
+
+def get_orchestrator_service() -> OrchestratorService:
+    """Provide orchestration service (plan, perceive, navigate, telemetry)."""
+    return OrchestratorService(
+        mission_service=get_mission_service(),
+        telemetry_service=get_telemetry_service(),
+    )
 
 
 def get_mission_orchestrator() -> MissionOrchestrator:

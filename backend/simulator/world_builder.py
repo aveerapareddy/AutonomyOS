@@ -47,6 +47,17 @@ _WALL_RIGHT_XY = (3.0, 0.0)
 _BLOCK_XY = (1.0, 1.0)
 
 
+def get_world_layout() -> Tuple[Tuple[float, float, float, float], List[WorldObject], WorldObject]:
+    """Return (world_bounds, obstacle_objects, target_object) for planning. No PyBullet."""
+    obstacle_objects = [
+        WorldObject(object_id="obstacle_0", object_type="wall", x=_WALL_LEFT_XY[0], y=_WALL_LEFT_XY[1]),
+        WorldObject(object_id="obstacle_1", object_type="wall", x=_WALL_RIGHT_XY[0], y=_WALL_RIGHT_XY[1]),
+        WorldObject(object_id="obstacle_2", object_type="block", x=_BLOCK_XY[0], y=_BLOCK_XY[1]),
+    ]
+    target_object = WorldObject(object_id="target", object_type="target", x=_TARGET_XY[0], y=_TARGET_XY[1])
+    return WORLD_BOUNDS, obstacle_objects, target_object
+
+
 def build_world() -> BuiltWorld:
     """
     Create a flat world with static obstacles and one target cube.

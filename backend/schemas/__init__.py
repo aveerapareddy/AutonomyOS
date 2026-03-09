@@ -1,6 +1,7 @@
 """Pydantic schemas for API and internal contracts."""
 
 from backend.schemas.benchmark import BenchmarkRunRequest, BenchmarkRunResponse
+from backend.schemas.execution import ExecutionResult, ExecutionStep, MissionExecutionSummary
 from backend.schemas.mission import MissionRecord, MissionRequest, MissionResponse, MissionStatus
 from backend.schemas.telemetry import (
     TelemetryEvent,
@@ -10,6 +11,9 @@ from backend.schemas.telemetry import (
 )
 
 __all__ = [
+    "ExecutionResult",
+    "ExecutionStep",
+    "MissionExecutionSummary",
     "MissionRecord",
     "MissionRequest",
     "MissionResponse",

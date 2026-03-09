@@ -18,6 +18,10 @@ class TelemetryEventType(str, Enum):
     REPLANNING_STARTED = "replanning_started"
     MISSION_COMPLETED = "mission_completed"
     MISSION_FAILED = "mission_failed"
+    EXECUTION_STARTED = "execution_started"
+    WAYPOINT_REACHED = "waypoint_reached"
+    EXECUTION_COMPLETED = "execution_completed"
+    EXECUTION_FAILED = "execution_failed"
 
 
 class TelemetryEvent(BaseModel):

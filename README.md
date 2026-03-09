@@ -28,12 +28,16 @@ The repository currently provides:
 - **Event-driven telemetry foundation** — Per-mission monotonic sequence and timestamp; stable event types and source-component constants for replay and trace filtering.
 - **Mission timeline retrieval API** — GET `/missions/{mission_id}/telemetry` returns events in order (sequence, then timestamp).
 - **Replay-ready event contracts** — TelemetryEvent (event_id, mission_id, sequence, timestamp, event_type, source_component, payload) and TelemetryEventType enum.
-
-The mission API and simulator are not yet connected; mission execution and replay are not implemented.
+- **First end-to-end orchestration flow** — POST `/missions/{mission_id}/execute` runs plan-perceive-navigate; returns `MissionExecutionSummary`; 404 when mission not found.
+- **Rule-based mission planning** — Keyword-derived plan steps (e.g. "red", "avoid"); no LLM yet.
+- **Perception + navigation coordination** — Orchestrator loads layout, runs perception, selects target, plans path; clear failure paths for no target / no path.
+- **Replay-ready telemetry events during execution** — plan_generated, perception_completed, path_computed, mission_completed, mission_failed with stable source_component (planner, perception_agent, navigation_agent). Success path: 5 events (mission_received at create plus 4 during execute).
+- **Waypoint execution engine for simulator-based mission runs** — WaypointExecutor drives the robot through navigation waypoints in SimulationEnvironment; emits execution_started, waypoint_reached, execution_completed, execution_failed; configurable tolerance and max steps per waypoint. Orchestrator runs execution after path planning and extends MissionExecutionSummary with execution_steps, final_robot_position, execution_status.
 
 **Simulator architecture**
 
 - **actions.py** — `RobotAction` enum (forward, backward, turn_left, turn_right, stop); used by `environment.step()` and the demo.
+- **execution_engine.py** — WaypointExecutor: drives robot through waypoints (turn toward waypoint, forward until within tolerance); emits execution telemetry; ExecutionConfig (waypoint_tolerance, turn_threshold, max_steps_per_waypoint).
 - **world_builder.py** — Builds a deterministic scene: ground plane, two walls, one block, one red target cube. Returns a `BuiltWorld` with `ground_id`, `obstacle_ids`, `obstacle_positions`, `obstacle_types` (wall/block), `target_id`, `target_position` (2D), `target_z`, and `world_bounds` (min_x, max_x, min_y, max_y).
 - **robot.py** — Kinematic robot (box body); maintains (x, y, theta) and syncs to PyBullet; exposes `forward`, `backward`, `turn_left`, `turn_right`, `stop` and `get_pose()`.
 - **environment.py** — Connects to PyBullet (DIRECT or GUI), builds world, spawns robot. Exposes `reset()`, `step(RobotAction)`, `get_robot_pose()`, `get_world_bounds()`, `get_obstacles()`, `get_obstacle_types()`, `get_target_pose()`, `shutdown()`. No API or mission coupling.
@@ -51,8 +55,8 @@ Run all commands from the repository root (the directory containing `backend/` a
 |-----------|---------|
 | `backend/` | Python package for the service and simulation. |
 | `backend/api/` | FastAPI app, routes (missions, telemetry), dependencies. |
-| `backend/services/` | Business logic (mission lifecycle, telemetry). |
-| `backend/schemas/` | Pydantic models (missions, telemetry, perception, navigation, benchmark). |
+| `backend/services/` | Business logic (mission lifecycle, mission orchestrator, orchestration, telemetry). |
+| `backend/schemas/` | Pydantic models (missions, execution, telemetry, perception, navigation, benchmark). |
 | `backend/simulator/` | PyBullet world, robot, environment, occupancy grid. |
 | `backend/agents/` | Navigation agent (A*), perception agent (rule-based from world metadata). |
 | `backend/scenarios/` | Reserved for scenario generation (not yet implemented). |
@@ -80,7 +84,7 @@ pip install -r backend/requirements.txt
 uvicorn backend.api.main:app --reload
 ```
 
-API base URL: `http://127.0.0.1:8000` (or the host/port you configure). Health: `GET /health`. Missions: `POST /missions`, `GET /missions/{mission_id}`. Telemetry: `GET /missions/{mission_id}/telemetry`.
+API base URL: `http://127.0.0.1:8000` (or the host/port you configure). Health: `GET /health`. Missions: `POST /missions`, `GET /missions/{mission_id}`. Execute: `POST /missions/{mission_id}/execute` (runs plan-perceive-navigate and waypoint execution in sim; returns summary). Telemetry: `GET /missions/{mission_id}/telemetry`.
 
 **Simulator demo**
 
@@ -103,6 +107,14 @@ python scripts/run_perception_demo.py
 ```
 
 Runs the perception agent on the sim world metadata and prints detected targets and obstacles (object_id, type, x, y). No image-based detection; Phase-1 is rule-based from world state.
+
+**Execution demo**
+
+```bash
+python scripts/run_execution_demo.py
+```
+
+Creates a mission, runs the full pipeline (plan, perceive, navigate, waypoint execution in the simulator), and prints the execution summary and final robot position.
 
 The simulator, navigation, and perception are tested with Python 3.11 and 3.12 on macOS (pybullet-mm for pip install).
 
@@ -140,13 +152,15 @@ Mission API tests always run; simulator tests are skipped if PyBullet is not ins
 
 ## Known Limitations
 
+- Execution is open-loop (follow waypoints only; no obstacle avoidance or replanning during motion).
+- Static world layout only; single fixed warehouse layout, world_id not used.
+- No dynamic replanning; one plan per execute, no obstacle_detected/replan loop.
+- Planner is deterministic, not LLM-based yet; plan steps are keyword-derived.
 - Static planning only; world is fixed at plan time; no replanning or dynamic obstacles.
-- No path execution yet; navigation produces waypoints only.
 - Path simplification is collinear-only (reduces straight-line noise); no curve fitting or smoothing.
 - Perception: metadata-based detection only; no image-based perception yet; no tracking across frames.
-- Telemetry is currently emitted only for mission creation; planning, navigation, and execution will emit events when those flows are added.
-- Orchestration will later move out of route layer (mission create is already coordinated via MissionOrchestrator).
 - Telemetry is in-memory only; no persistence yet.
+- Backlog: replace hardcoded robot start (0, 0) with robot_start_provider or world-layout metadata; plan steps to become typed (structured) later.
 
 ## Roadmap
 
