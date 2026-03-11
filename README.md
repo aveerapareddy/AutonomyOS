@@ -47,6 +47,11 @@ The repository currently provides:
 - **Simplified waypoint generation** — A* path is simplified by collapsing collinear waypoints; NavigationResult exposes path_length_raw and path_length; benchmark results include path_length_raw per scenario.
 - **Scenario-driven simulator world construction** — WorldLayoutSpec and build_world_from_config; SimulationEnvironment accepts optional world_layout; same layout drives planning and execution in benchmarks.
 - **Aligned planning and execution geometry** — Benchmark runs use scenario bounds, obstacles, target, and robot start for both path planning and sim execution; single source of truth per scenario.
+- **Phase-2 perception backend with YOLO integration path** — Metadata and YOLO backends; `PerceptionBackend` protocol, `MetadataPerceptionBackend`, `YoloPerceptionBackend`, `PerceptionFacade` for backend selection; `perceive_image()` for vision path.
+- **Stable shared perception contract** — Same `PerceptionRequest`/`PerceptionResult`/`DetectedObject` across metadata and image-based backends; orchestration uses metadata by default.
+- **Graceful fallback when YOLO unavailable** — If `ultralytics` is not installed or model load fails, image path returns `PerceptionResult` with message and empty lists; no raise.
+- **Simulator frame capture** — `SimulationEnvironment.capture_frame(CameraConfig)` returns RGB `CapturedFrame`; PyBullet TINY_RENDERER; deterministic default preset.
+- **Camera abstraction for image-based perception** — `CameraConfig` (width, height, target, distance, yaw, pitch, roll); `CapturedFrame` (rgb array, dimensions, optional metadata); reusable for replay/UI.
 
 **Simulator architecture**
 
@@ -54,10 +59,12 @@ The repository currently provides:
 - **execution_engine.py** — WaypointExecutor: drives robot through waypoints (turn toward waypoint, forward until within tolerance); emits execution telemetry; ExecutionConfig (waypoint_tolerance, turn_threshold, max_steps_per_waypoint).
 - **world_builder.py** — Builds a deterministic scene: default `build_world()` or scenario-driven `build_world_from_config(WorldLayoutSpec)`. Returns a `BuiltWorld`; `WorldLayoutSpec` carries bounds, obstacle_positions, obstacle_types, target_position (no PyBullet).
 - **robot.py** — Kinematic robot (box body); maintains (x, y, theta) and syncs to PyBullet; exposes `forward`, `backward`, `turn_left`, `turn_right`, `stop` and `get_pose()`.
-- **environment.py** — Connects to PyBullet (DIRECT or GUI). Optional `world_layout: WorldLayoutSpec` builds scenario world; otherwise default world. Exposes `reset()`, `step(RobotAction)`, `get_robot_pose()`, `get_world_bounds()`, `get_obstacles()`, `get_obstacle_types()`, `get_target_pose()`, `shutdown()`. No API or mission coupling.
+- **environment.py** — Connects to PyBullet (DIRECT or GUI). Optional `world_layout: WorldLayoutSpec` builds scenario world; otherwise default world. Exposes `reset()`, `step(RobotAction)`, `get_robot_pose()`, `get_world_bounds()`, `get_obstacles()`, `get_obstacle_types()`, `get_target_pose()`, `capture_frame(CameraConfig)`, `shutdown()`. No API or mission coupling.
+- **camera.py** — `default_camera_config()` preset; `capture_frame(client_id, config)` via PyBullet getCameraImage (TINY_RENDERER); returns RGB as uint8 (H, W, 3).
 - **grid_map.py** — Builds a 2D occupancy grid from world bounds and obstacle positions; configurable `inflation_radius` (grid cells); `world_to_grid`, `grid_to_world`, `is_blocked`, `neighbors` for path planning.
 - **agents/navigation_agent.py** — A* path planning on an occupancy grid; collinear waypoint simplification; returns world-space waypoints with path_length and path_length_raw.
-- **agents/perception_agent.py** — Rule-based perception from world metadata; returns `PerceptionResult` (targets, obstacles); swappable with YOLO later.
+- **agents/perception_agent.py** — Stable contract; `perceive_from_objects` (via facade, metadata backend); `perceive_image` (via facade, YOLO when available); `get_yolo_backend_status()`.
+- **agents/perception_backends/** — `base`: `PerceptionBackend` protocol, `PerceptionFacade`; `metadata_backend`: `MetadataPerceptionBackend`; `yolo_backend`: `YoloPerceptionBackend` (vision; optional ultralytics).
 - **schemas/navigation.py** — Waypoint, NavigationRequest, NavigationResult.
 - **schemas/perception.py** — DetectedObject, PerceptionRequest, PerceptionResult.
 
@@ -70,10 +77,10 @@ Run all commands from the repository root (the directory containing `backend/` a
 | `backend/` | Python package for the service and simulation. |
 | `backend/api/` | FastAPI app, routes (missions, telemetry, replay, benchmarks), dependencies. |
 | `backend/services/` | Business logic (mission lifecycle, orchestrator, orchestration, execution/sim run, telemetry, replay, benchmark). |
-| `backend/schemas/` | Pydantic models (missions, execution, telemetry, replay, perception, navigation, benchmark). |
+| `backend/schemas/` | Pydantic models (missions, execution, telemetry, replay, perception, navigation, benchmark, camera). |
 | `backend/scenarios/` | Scenario config, deterministic generator, benchmark runner. |
-| `backend/simulator/` | PyBullet world, robot, environment, occupancy grid. |
-| `backend/agents/` | Navigation agent (A*), perception agent (rule-based from world metadata). |
+| `backend/simulator/` | PyBullet world, robot, environment, camera/frame capture, occupancy grid. |
+| `backend/agents/` | Navigation agent (A*), perception agent, perception_backends (metadata, YOLO). |
 | `backend/storage/` | Storage abstractions and repository implementations. |
 | `scripts/` | One-off and demo scripts (e.g. simulator demo). |
 
@@ -130,6 +137,23 @@ python scripts/run_execution_demo.py
 
 Creates a mission, runs the full pipeline (plan, perceive, navigate, waypoint execution in the simulator), and prints the execution summary and final robot position.
 
+**YOLO perception demo** (Phase 2; requires `ultralytics`)
+
+```bash
+pip install -r backend/requirements.txt
+python scripts/run_yolo_perception_demo.py
+```
+
+With no arguments, runs on a synthetic image. Pass an image path to run on a file: `python scripts/run_yolo_perception_demo.py path/to/image.jpg`. First run may download the default model (`yolov8n.pt`) from the Ultralytics CDN; model weights are not committed to the repo.
+
+**Camera / frame capture demo**
+
+```bash
+python scripts/run_camera_demo.py
+```
+
+Initializes the simulator, captures one frame with the default camera preset, prints frame shape and metadata, and optionally runs YOLO on the captured frame if `ultralytics` is available. If PIL is installed, the frame is saved to `camera_capture.png` in the current working directory (repository root if run from there).
+
 The simulator, navigation, and perception are tested with Python 3.11 and 3.12 on macOS (pybullet-mm for pip install).
 
 Uses PyBullet in DIRECT (headless) mode, runs a short sequence of movements, and prints robot and target poses.
@@ -174,7 +198,10 @@ Mission API tests always run; simulator tests are skipped if PyBullet is not ins
 - Planner is deterministic, not LLM-based yet; plan steps are keyword-derived.
 - Static planning only; world is fixed at plan time.
 - Path simplification is collinear-only (reduces straight-line noise); no curve fitting or smoothing.
-- Perception: metadata-based detection only; no image-based perception yet; no tracking across frames.
+- Perception: orchestration uses metadata only; image-based (YOLO) not yet integrated into mission execution.
+- YOLO not yet integrated into orchestration; object-based path remains metadata-backed.
+- YOLO detections are image-space only (normalized 0–1); no world-space projection yet.
+- Default YOLO model is generic COCO, not warehouse-specific; no target_candidate/obstacle/ignored class mapping yet.
 - Telemetry is in-memory only; no persistence yet.
 - Event-level replay only; one frame per telemetry event.
 - No continuous playback or interpolation between frames.
@@ -182,16 +209,20 @@ Mission API tests always run; simulator tests are skipped if PyBullet is not ins
 - No event filtering yet; replay returns all events as frames.
 - Backlog: plan steps to become typed (structured); include target_x/target_y in execution event payloads so replay frames get target_position for UI; unified scenario adapter so planning layout and simulator WorldLayoutSpec derive from one conversion path (avoid drift between _layout_from_scenario and _world_layout_spec_from_scenario).
 
-## Roadmap
+## Development Roadmap
 
-- **Phase 1 — Core autonomy stack**  
-  Connect mission API to the simulator; mission planning and execution loop; telemetry and basic replay/trace.
+### Phase 1 — Autonomy Platform (completed)
+- mission management
+- simulator
+- perception contract
+- navigation
+- execution engine
+- telemetry
+- replay
+- scenario generation
+- benchmarking
 
-- **Phase 2 — YOLO perception integration**  
-  Perception pipeline (e.g. OpenCV then YOLO) for object detection; feed observations into navigation and mission state.
-
-- **Phase 3 — Reinforcement learning navigation**  
-  Train or integrate policies for goal-directed navigation in the warehouse environment; optional LangGraph or similar for high-level control.
-
-- **Phase 4 — Scenario benchmarking and evaluation**  
-  Parameterized scenario generation; benchmark runs; metrics and evaluation for autonomy behavior.
+### Phase 2 — AI Perception (in progress)
+- YOLO-based perception backend
+- vision pipeline
+- perception benchmarking
