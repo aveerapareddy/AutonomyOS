@@ -52,6 +52,8 @@ The repository currently provides:
 - **Graceful fallback when YOLO unavailable** — If `ultralytics` is not installed or model load fails, image path returns `PerceptionResult` with message and empty lists; no raise.
 - **Simulator frame capture** — `SimulationEnvironment.capture_frame(CameraConfig)` returns RGB `CapturedFrame`; PyBullet TINY_RENDERER; deterministic default preset.
 - **Camera abstraction for image-based perception** — `CameraConfig` (width, height, target, distance, yaw, pitch, roll); `CapturedFrame` (rgb array, dimensions, optional metadata); reusable for replay/UI.
+- **Perception evaluation foundation** — Compare simulator ground truth (target + obstacles) with perception outputs; `PerceptionMatch` and `PerceptionEvalResult` schemas; metadata backend matched by type and position; YOLO path reports no position matching.
+- **Simulator-truth vs perception comparison** — Truth from `truth_objects_from_world()`; `evaluate_perception()` returns counts and per-object matches; demo script runs metadata eval and optional YOLO eval.
 
 **Simulator architecture**
 
@@ -76,8 +78,8 @@ Run all commands from the repository root (the directory containing `backend/` a
 |-----------|---------|
 | `backend/` | Python package for the service and simulation. |
 | `backend/api/` | FastAPI app, routes (missions, telemetry, replay, benchmarks), dependencies. |
-| `backend/services/` | Business logic (mission lifecycle, orchestrator, orchestration, execution/sim run, telemetry, replay, benchmark). |
-| `backend/schemas/` | Pydantic models (missions, execution, telemetry, replay, perception, navigation, benchmark, camera). |
+| `backend/services/` | Business logic (mission lifecycle, orchestrator, orchestration, execution/sim run, telemetry, replay, benchmark, perception_eval). |
+| `backend/schemas/` | Pydantic models (missions, execution, telemetry, replay, perception, perception_eval, navigation, benchmark, camera). |
 | `backend/scenarios/` | Scenario config, deterministic generator, benchmark runner. |
 | `backend/simulator/` | PyBullet world, robot, environment, camera/frame capture, occupancy grid. |
 | `backend/agents/` | Navigation agent (A*), perception agent, perception_backends (metadata, YOLO). |
@@ -128,6 +130,14 @@ python scripts/run_perception_demo.py
 ```
 
 Runs the perception agent on the sim world metadata and prints detected targets and obstacles (object_id, type, x, y). No image-based detection; Phase-1 is rule-based from world state.
+
+**Perception evaluation demo**
+
+```bash
+python scripts/run_perception_eval_demo.py
+```
+
+Initializes the simulator, derives truth objects (target + obstacles), runs metadata perception and evaluates it (match counts and per-object matches). If YOLO is available, captures a frame and evaluates YOLO output (no position matching to world truth). Works when YOLO is unavailable.
 
 **Execution demo**
 
