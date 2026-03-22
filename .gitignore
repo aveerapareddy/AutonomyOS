@@ -32,3 +32,6 @@ htmlcov/
 # OS
 .DS_Store
 Thumbs.db
+
+# Simulator / camera demo output (not committed)
+camera_capture.png
