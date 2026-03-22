@@ -1,5 +1,6 @@
 """Simulator camera and frame capture. Uses PyBullet getCameraImage."""
 
+import time
 from typing import Optional
 
 import numpy as np
@@ -9,7 +10,12 @@ try:
 except ImportError:
     pb = None
 
-from backend.schemas.camera import CameraConfig, CapturedFrame
+from backend.schemas.camera import (
+    CameraConfig,
+    CameraIntrinsics,
+    CameraPose,
+    CapturedFrame,
+)
 
 DEFAULT_WIDTH = 640
 DEFAULT_HEIGHT = 480
@@ -68,21 +74,43 @@ def _projection_matrix_from_config(config: CameraConfig) -> list:
     )
 
 
+def _camera_pose_from_config(config: CameraConfig) -> CameraPose:
+    view = _view_matrix_from_config(config)
+    m = np.array(view, dtype=np.float64).reshape(4, 4, order="F")
+    inv = np.linalg.inv(m)
+    px, py, pz = float(inv[0, 3]), float(inv[1, 3]), float(inv[2, 3])
+    return CameraPose(
+        position_x=px,
+        position_y=py,
+        position_z=pz,
+        yaw=config.yaw,
+        pitch=config.pitch,
+        roll=config.roll,
+    )
+
+
+def _intrinsics_from_config(config: CameraConfig) -> CameraIntrinsics:
+    return CameraIntrinsics(
+        width=config.width,
+        height=config.height,
+        fov=config.fov_degrees,
+        near_plane=config.near,
+        far_plane=config.far,
+    )
+
+
 def capture_frame(
     client_id: int,
     config: CameraConfig,
     renderer: Optional[int] = None,
 ) -> CapturedFrame:
-    """
-    Capture one RGB frame from the given PyBullet client using config.
-    Returns RGB as (H, W, 3) uint8. Uses TINY_RENDERER if renderer not specified.
-    """
     if pb is None:
         raise RuntimeError("pybullet is not installed")
     view = _view_matrix_from_config(config)
     proj = _projection_matrix_from_config(config)
     if renderer is None:
         renderer = pb.ER_TINY_RENDERER
+    ts = time.time()
     result = pb.getCameraImage(
         config.width,
         config.height,
@@ -95,9 +123,13 @@ def capture_frame(
     rgba_flat = result[2]
     rgba = np.reshape(rgba_flat, (h, w, 4))
     rgb = np.ascontiguousarray(rgba[:, :, :3], dtype=np.uint8)
+    pose = _camera_pose_from_config(config)
+    intrinsics = _intrinsics_from_config(config)
     return CapturedFrame(
+        rgb=rgb,
         width=w,
         height=h,
-        rgb=rgb,
-        metadata={"target": [config.target_x, config.target_y, config.target_z]},
+        camera_pose=pose,
+        camera_intrinsics=intrinsics,
+        timestamp=ts,
     )

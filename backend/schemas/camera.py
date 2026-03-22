@@ -1,6 +1,6 @@
 """Camera configuration and captured frame schemas."""
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -22,12 +22,35 @@ class CameraConfig(BaseModel):
     far: float = Field(500.0, gt=0)
 
 
-class CapturedFrame(BaseModel):
-    """Single RGB frame from the simulator camera."""
+class CameraPose(BaseModel):
+    """World-space camera pose at capture time (degrees for angles)."""
+
+    position_x: float
+    position_y: float
+    position_z: float
+    yaw: float
+    pitch: float
+    roll: float
+
+
+class CameraIntrinsics(BaseModel):
+    """Render intrinsics aligned with PyBullet projection (FOV in degrees)."""
 
     width: int = Field(..., gt=0)
     height: int = Field(..., gt=0)
+    fov: float = Field(..., gt=0, lt=180)
+    near_plane: float = Field(..., gt=0)
+    far_plane: float = Field(..., gt=0)
+
+
+class CapturedFrame(BaseModel):
+    """RGB frame with pose and intrinsics for downstream projection."""
+
     rgb: Any = Field(..., description="RGB image as (H, W, 3) uint8 numpy array")
-    metadata: Optional[Dict[str, Any]] = None
+    width: int = Field(..., gt=0)
+    height: int = Field(..., gt=0)
+    camera_pose: CameraPose
+    camera_intrinsics: CameraIntrinsics
+    timestamp: float
 
     model_config = ConfigDict(arbitrary_types_allowed=True)

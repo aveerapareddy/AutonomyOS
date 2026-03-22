@@ -32,9 +32,17 @@ def main() -> None:
         config = default_camera_config(width=320, height=240)
         frame = env.capture_frame(config)
         print(f"Frame shape: {frame.rgb.shape}")
-        print(f"Width: {frame.width}, Height: {frame.height}")
-        if frame.metadata:
-            print(f"Metadata: {frame.metadata}")
+        p = frame.camera_pose
+        print(
+            f"Camera pose: pos=({p.position_x:.4f}, {p.position_y:.4f}, {p.position_z:.4f}) "
+            f"yaw={p.yaw} pitch={p.pitch} roll={p.roll}"
+        )
+        i = frame.camera_intrinsics
+        print(
+            f"Camera intrinsics: {i.width}x{i.height} fov={i.fov} "
+            f"near={i.near_plane} far={i.far_plane}"
+        )
+        print(f"Timestamp: {frame.timestamp}")
         save_frame_png(frame, OUTPUT_PNG)
 
         try:

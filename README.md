@@ -51,7 +51,8 @@ The repository currently provides:
 - **Stable shared perception contract** — Same `PerceptionRequest`/`PerceptionResult`/`DetectedObject` across metadata and image-based backends; orchestration uses metadata by default.
 - **Graceful fallback when YOLO unavailable** — If `ultralytics` is not installed or model load fails, image path returns `PerceptionResult` with message and empty lists; no raise.
 - **Simulator frame capture** — `SimulationEnvironment.capture_frame(CameraConfig)` returns RGB `CapturedFrame`; PyBullet TINY_RENDERER; deterministic default preset.
-- **Camera abstraction for image-based perception** — `CameraConfig` (width, height, target, distance, yaw, pitch, roll); `CapturedFrame` (rgb array, dimensions, optional metadata); reusable for replay/UI.
+- **Camera abstraction for image-based perception** — `CameraConfig` (width, height, target, distance, yaw, pitch, roll); `CapturedFrame` (rgb, dimensions, `camera_pose`, `camera_intrinsics`, `timestamp`); reusable for replay/UI.
+- **Camera pose and intrinsic metadata support** — `CameraPose` (world position, yaw/pitch/roll from config); `CameraIntrinsics` (resolution, vertical FOV in degrees, near/far); pose position derived from PyBullet view matrix inverse for alignment with rendering.
 - **Perception evaluation foundation** — Compare simulator ground truth (target + obstacles) with perception outputs; `PerceptionMatch` and `PerceptionEvalResult` schemas; metadata backend matched by type and position; YOLO path reports no position matching.
 - **Simulator-truth vs perception comparison** — Truth from `truth_objects_from_world()`; `evaluate_perception()` returns counts and per-object matches; demo script runs metadata eval and optional YOLO eval.
 
