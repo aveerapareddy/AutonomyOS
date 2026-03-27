@@ -1,10 +1,13 @@
 """Perception evaluation service tests."""
 
 from backend.schemas.perception import DetectedObject
-from backend.schemas.perception_eval import PerceptionEvalResult
+from backend.schemas.projection import ProjectedDetection, ProjectionOutput
 from backend.schemas.world import WorldObject
 from backend.services.perception_eval_service import (
     evaluate_perception,
+    evaluate_projected_detections,
+    predicted_semantic_family,
+    truth_semantic_family,
     truth_objects_from_world,
 )
 
@@ -22,6 +25,13 @@ def test_truth_objects_from_world() -> None:
     assert truth[2].object_id == "o1"
 
 
+def test_semantic_families() -> None:
+    assert truth_semantic_family("target") == "target"
+    assert truth_semantic_family("wall") == "obstacle"
+    assert predicted_semantic_family("target_candidate") == "target"
+    assert predicted_semantic_family("person") == "obstacle"
+
+
 def test_evaluate_empty_predictions() -> None:
     target = WorldObject(object_id="target", object_type="target", x=5.0, y=3.0)
     truth = truth_objects_from_world(target, [])
@@ -31,6 +41,8 @@ def test_evaluate_empty_predictions() -> None:
     assert result.matched_count == 0
     assert result.unmatched_truth_count == 1
     assert result.unmatched_prediction_count == 0
+    assert result.precision is None
+    assert result.recall == 0.0
     assert len(result.object_matches) == 1
     assert result.object_matches[0].matched is False
 
@@ -44,6 +56,7 @@ def test_evaluate_empty_truth() -> None:
     assert result.predicted_count == 1
     assert result.matched_count == 0
     assert result.unmatched_prediction_count == 1
+    assert result.recall is None
 
 
 def test_metadata_backend_high_match_on_default_world() -> None:
@@ -73,17 +86,53 @@ def test_metadata_backend_high_match_on_default_world() -> None:
     assert result.unmatched_truth_count == 0
     assert result.unmatched_prediction_count == 0
     assert result.message is None
+    assert result.precision == 1.0
+    assert result.recall == 1.0
 
 
-def test_yolo_backend_returns_message_no_position_matching() -> None:
-    target = WorldObject(object_id="target", object_type="target", x=5.0, y=3.0)
-    truth = truth_objects_from_world(target, [])
-    preds = [
-        DetectedObject(object_id="det_0", object_type="person", x=0.5, y=0.3, confidence=0.9),
+def test_projected_center_matches_truth_at_origin() -> None:
+    truth = [WorldObject(object_id="target", object_type="target", x=0.0, y=0.0)]
+    projected = [
+        ProjectedDetection(
+            original=DetectedObject(
+                object_id="det0",
+                object_type="target_candidate",
+                x=0.5,
+                y=0.5,
+                confidence=0.9,
+            ),
+            projection=ProjectionOutput(
+                world_x=0.0,
+                world_y=0.0,
+                world_z=0.0,
+                valid=True,
+            ),
+        )
     ]
-    result = evaluate_perception(truth, [], preds, backend_name="yolo")
-    assert result.backend_name == "yolo"
+    result = evaluate_projected_detections(truth, projected, position_tolerance=0.5)
+    assert result.matched_count == 1
+    assert result.precision == 1.0
+    assert result.recall == 1.0
+    assert result.backend_name == "yolo_projected"
+
+
+def test_projected_empty_list() -> None:
+    truth = [WorldObject(object_id="target", object_type="target", x=0.0, y=0.0)]
+    result = evaluate_projected_detections(truth, [])
+    assert result.predicted_count == 0
     assert result.matched_count == 0
-    assert result.message is not None
-    assert "image-space" in result.message
-    assert len(result.object_matches) == 0
+    assert result.unmatched_truth_count == 1
+    assert result.precision is None
+    assert result.recall == 0.0
+
+
+def test_projected_invalid_projection_skipped_for_match() -> None:
+    truth = [WorldObject(object_id="target", object_type="target", x=0.0, y=0.0)]
+    projected = [
+        ProjectedDetection(
+            original=DetectedObject(object_id="d0", object_type="target_candidate", x=0.5, y=0.5, confidence=0.9),
+            projection=ProjectionOutput(world_x=0.0, world_y=0.0, world_z=None, valid=False, message="bad"),
+        )
+    ]
+    result = evaluate_projected_detections(truth, projected)
+    assert result.matched_count == 0

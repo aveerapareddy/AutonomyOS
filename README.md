@@ -55,8 +55,10 @@ The repository currently provides:
 - **Camera pose and intrinsic metadata support** — `CameraPose` (world position, yaw/pitch/roll from config); `CameraIntrinsics` (resolution, vertical FOV in degrees, near/far); pose position derived from PyBullet view matrix inverse for alignment with rendering.
 - **Basic image-to-world projection layer** — `project_to_world` / `project_detections` in `backend/services/projection_service.py`; schemas in `backend/schemas/projection.py`.
 - **Simulator-frame detections** — Can be mapped into approximate world coordinates using camera pose and intrinsics from `CapturedFrame` (demo: `scripts/run_projection_demo.py`).
-- **Perception evaluation foundation** — Compare simulator ground truth (target + obstacles) with perception outputs; `PerceptionMatch` and `PerceptionEvalResult` schemas; metadata backend matched by type and position; YOLO path reports no position matching.
-- **Simulator-truth vs perception comparison** — Truth from `truth_objects_from_world()`; `evaluate_perception()` returns counts and per-object matches; demo script runs metadata eval and optional YOLO eval.
+- **Perception evaluation foundation** — Compare simulator ground truth (target + obstacles) with perception outputs; `PerceptionMatch` and `PerceptionEvalResult` (optional precision/recall); metadata backend matched by type and world position.
+- **Projected detection evaluation against simulator truth** — `evaluate_projected_detections()` matches projected image detections to truth objects; uses approximate world coordinates from `project_detections()`, not calibrated geometry.
+- **Approximate world-space evaluation for image-based detections** — After projection, image backends (e.g. YOLO in demos) are evaluated in approximate world space against truth; see `scripts/run_perception_eval_demo.py`.
+- **Simulator-truth vs perception comparison** — Truth from `truth_objects_from_world()`; `evaluate_perception()` for metadata; projected path for image backends; demo runs both.
 
 **Simulator architecture**
 
@@ -213,9 +215,11 @@ Mission API tests always run; simulator tests are skipped if PyBullet is not ins
 - Path simplification is collinear-only (reduces straight-line noise); no curve fitting or smoothing.
 - Perception: orchestration uses metadata only; image-based (YOLO) not yet integrated into mission execution.
 - YOLO not yet integrated into orchestration; object-based path remains metadata-backed.
-- Projection is approximate and ground-plane only (linear mapping from normalized image coordinates; not calibrated geometry).
+- Projection is approximate and ground-plane only.
 - No calibration or true depth modeling yet.
-- Default YOLO model is generic COCO, not warehouse-specific; no target_candidate/obstacle/ignored class mapping yet.
+- Semantic-family matching is coarse (detector labels mapped to target vs obstacle families; not class-accurate).
+- Projected precision/recall are not benchmark-grade yet.
+- Default YOLO model is generic COCO; label-to-truth matching uses a small explicit compatibility map (e.g. person to obstacle family), not warehouse-specific training.
 - Telemetry is in-memory only; no persistence yet.
 - Event-level replay only; one frame per telemetry event.
 - No continuous playback or interpolation between frames.

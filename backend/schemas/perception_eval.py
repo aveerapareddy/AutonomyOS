@@ -23,3 +23,5 @@ class PerceptionEvalResult(BaseModel):
     unmatched_prediction_count: int = 0
     object_matches: list[PerceptionMatch] = Field(default_factory=list)
     message: Optional[str] = None
+    precision: Optional[float] = None
+    recall: Optional[float] = None
