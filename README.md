@@ -53,6 +53,8 @@ The repository currently provides:
 - **Simulator frame capture** — `SimulationEnvironment.capture_frame(CameraConfig)` returns RGB `CapturedFrame`; PyBullet TINY_RENDERER; deterministic default preset.
 - **Camera abstraction for image-based perception** — `CameraConfig` (width, height, target, distance, yaw, pitch, roll); `CapturedFrame` (rgb, dimensions, `camera_pose`, `camera_intrinsics`, `timestamp`); reusable for replay/UI.
 - **Camera pose and intrinsic metadata support** — `CameraPose` (world position, yaw/pitch/roll from config); `CameraIntrinsics` (resolution, vertical FOV in degrees, near/far); pose position derived from PyBullet view matrix inverse for alignment with rendering.
+- **Basic image-to-world projection layer** — `project_to_world` / `project_detections` in `backend/services/projection_service.py`; schemas in `backend/schemas/projection.py`.
+- **Simulator-frame detections** — Can be mapped into approximate world coordinates using camera pose and intrinsics from `CapturedFrame` (demo: `scripts/run_projection_demo.py`).
 - **Perception evaluation foundation** — Compare simulator ground truth (target + obstacles) with perception outputs; `PerceptionMatch` and `PerceptionEvalResult` schemas; metadata backend matched by type and position; YOLO path reports no position matching.
 - **Simulator-truth vs perception comparison** — Truth from `truth_objects_from_world()`; `evaluate_perception()` returns counts and per-object matches; demo script runs metadata eval and optional YOLO eval.
 
@@ -211,7 +213,8 @@ Mission API tests always run; simulator tests are skipped if PyBullet is not ins
 - Path simplification is collinear-only (reduces straight-line noise); no curve fitting or smoothing.
 - Perception: orchestration uses metadata only; image-based (YOLO) not yet integrated into mission execution.
 - YOLO not yet integrated into orchestration; object-based path remains metadata-backed.
-- YOLO detections are image-space only (normalized 0–1); no world-space projection yet.
+- Projection is approximate and ground-plane only (linear mapping from normalized image coordinates; not calibrated geometry).
+- No calibration or true depth modeling yet.
 - Default YOLO model is generic COCO, not warehouse-specific; no target_candidate/obstacle/ignored class mapping yet.
 - Telemetry is in-memory only; no persistence yet.
 - Event-level replay only; one frame per telemetry event.
