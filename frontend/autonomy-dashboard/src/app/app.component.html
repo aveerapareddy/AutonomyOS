@@ -1,0 +1,215 @@
+<div class="min-h-screen bg-shell-bg font-sans text-[#E8EAED] antialiased">
+  <header
+    class="border-b border-shell-border bg-shell-surface px-6 py-4 flex flex-wrap items-center justify-between gap-4"
+  >
+    <div>
+      <div class="text-xs tracking-[0.25em] uppercase text-shell-muted">AutonomyOS</div>
+      <div class="text-[11px] tracking-wide text-shell-muted mt-1">
+        Autonomous Robotics Control Interface
+      </div>
+    </div>
+    <div class="flex flex-wrap items-center gap-6 text-[11px] tracking-[0.14em] uppercase">
+      <div class="flex items-center gap-2">
+        <span class="text-shell-muted">Mode</span>
+        <span class="border-l border-shell-border pl-2 text-[#E8EAED]">Simulation</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="text-shell-muted">Planner</span>
+        <span class="border-l border-shell-border pl-2 text-[#E8EAED]">{{
+          plannerModeHeader
+        }}</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="text-shell-muted">Status</span>
+        @if (runState === 'FAILED') {
+          <span class="border-l border-shell-border pl-2 text-red-500/90">{{ runState }}</span>
+        } @else if (runState === 'RUNNING') {
+          <span class="border-l border-shell-border pl-2 text-shell-muted">{{ runState }}</span>
+        } @else {
+          <span class="border-l border-shell-border pl-2 text-[#E8EAED]">{{ runState }}</span>
+        }
+      </div>
+    </div>
+  </header>
+
+  <main
+    class="max-w-[1680px] mx-auto px-6 py-6 grid grid-cols-1 gap-4 pb-10 lg:grid-cols-2 lg:grid-rows-[auto_auto] lg:gap-x-5"
+  >
+    <div class="flex flex-col gap-4 lg:col-start-1 lg:row-start-1">
+      <section
+        class="border border-shell-border bg-shell-surface p-4"
+        aria-label="Mission control"
+      >
+        <h2 class="text-[10px] tracking-[0.2em] uppercase text-shell-muted mb-4">
+          Mission Control
+        </h2>
+        <label class="block text-[11px] text-shell-muted mb-2 uppercase tracking-wide"
+          >Mission directive</label
+        >
+        <textarea
+          [(ngModel)]="missionText"
+          rows="4"
+          class="w-full bg-shell-raised border border-shell-border px-3 py-2 text-sm text-[#E8EAED] placeholder:text-shell-muted/60 focus:outline-none focus:border-[#3D4450] resize-y min-h-[96px]"
+          placeholder=""
+        ></textarea>
+        <div class="flex flex-wrap gap-3 mt-4">
+          <button
+            type="button"
+            (click)="createMission()"
+            class="px-4 py-2 text-[11px] tracking-[0.12em] uppercase border border-shell-border bg-shell-raised hover:bg-[#1E2228] transition-colors"
+          >
+            Create mission
+          </button>
+          <button
+            type="button"
+            (click)="executeMission()"
+            class="px-4 py-2 text-[11px] tracking-[0.12em] uppercase border border-[#3D4450] bg-[#171A1F] hover:bg-[#1E2228] transition-colors"
+          >
+            Execute mission
+          </button>
+        </div>
+        @if (currentMissionId) {
+          <p class="mt-4 text-xs text-shell-muted font-mono">
+            mission_id: {{ currentMissionId }}
+          </p>
+        }
+        @if (apiError) {
+          <p class="mt-3 text-xs text-red-500/90">{{ apiError }}</p>
+        }
+      </section>
+
+      <section
+        class="border border-shell-border bg-shell-surface p-4"
+        aria-label="Planner output"
+      >
+        <h2 class="text-[10px] tracking-[0.2em] uppercase text-shell-muted mb-4">
+          Planner Output
+        </h2>
+        @if (plannerSnapshot) {
+          <dl class="space-y-0 text-sm">
+            <div class="flex justify-between gap-4 border-b border-shell-line py-2">
+              <dt class="text-shell-muted">planner_mode</dt>
+              <dd class="text-right font-mono text-xs">{{ formatVal(plannerSnapshot.planner_mode) }}</dd>
+            </div>
+            <div class="flex justify-between gap-4 border-b border-shell-line py-2">
+              <dt class="text-shell-muted">goal_type</dt>
+              <dd class="text-right font-mono text-xs">{{ formatVal(plannerSnapshot.goal_type) }}</dd>
+            </div>
+            <div class="flex justify-between gap-4 border-b border-shell-line py-2">
+              <dt class="text-shell-muted">target_label</dt>
+              <dd class="text-right font-mono text-xs">{{ formatVal(plannerSnapshot.target_label) }}</dd>
+            </div>
+            <div class="py-2 border-b border-shell-line">
+              <dt class="text-shell-muted mb-2">constraints</dt>
+              <dd>
+                @if (plannerSnapshot.constraints.length) {
+                  <ul class="list-none space-y-1 font-mono text-xs text-[#C9CDD4]">
+                    @for (c of plannerSnapshot.constraints; track c) {
+                      <li class="border-l-2 border-shell-border pl-2">{{ c }}</li>
+                    }
+                  </ul>
+                } @else {
+                  <span class="font-mono text-xs text-shell-muted">—</span>
+                }
+              </dd>
+            </div>
+            <div class="py-2">
+              <dt class="text-shell-muted mb-2">plan_steps</dt>
+              <dd>
+                <ol class="list-decimal list-inside space-y-1 font-mono text-xs text-[#C9CDD4]">
+                  @for (s of plannerSnapshot.plan_steps; track $index) {
+                    <li>{{ s }}</li>
+                  }
+                </ol>
+              </dd>
+            </div>
+          </dl>
+        } @else {
+          <p class="text-sm text-shell-muted">No plan loaded. Execute a mission to populate.</p>
+        }
+      </section>
+    </div>
+
+    <div
+      class="lg:col-start-2 lg:row-start-1 lg:sticky lg:self-start lg:top-6 min-h-0"
+    >
+      <app-simulator-view [scene]="simulatorScene" />
+    </div>
+
+    <section
+      class="border border-shell-border bg-shell-surface p-4 h-fit lg:col-span-1 lg:col-start-1 lg:row-start-2"
+      aria-label="Execution status"
+    >
+      <h2 class="text-[10px] tracking-[0.2em] uppercase text-shell-muted mb-4">
+        Execution Status
+      </h2>
+      @if (execution) {
+        <dl class="text-sm space-y-0">
+          <div class="flex justify-between gap-4 border-b border-shell-line py-2">
+            <dt class="text-shell-muted">status</dt>
+            <dd class="text-right font-mono text-xs">{{ execution.status }}</dd>
+          </div>
+          <div class="flex justify-between gap-4 border-b border-shell-line py-2">
+            <dt class="text-shell-muted">execution_status</dt>
+            <dd class="text-right font-mono text-xs">{{ formatVal(execution.execution_status) }}</dd>
+          </div>
+          <div class="flex justify-between gap-4 border-b border-shell-line py-2">
+            <dt class="text-shell-muted">path_found</dt>
+            <dd class="text-right font-mono text-xs">{{ execution.path_found }}</dd>
+          </div>
+          <div class="flex justify-between gap-4 border-b border-shell-line py-2">
+            <dt class="text-shell-muted">waypoint_count</dt>
+            <dd class="text-right font-mono text-xs">{{ execution.waypoint_count }}</dd>
+          </div>
+          <div class="flex justify-between gap-4 border-b border-shell-line py-2">
+            <dt class="text-shell-muted">path_length_raw</dt>
+            <dd class="text-right font-mono text-xs">{{ formatVal(execution.path_length_raw) }}</dd>
+          </div>
+          <div class="flex justify-between gap-4 border-b border-shell-line py-2">
+            <dt class="text-shell-muted">path_length_simplified</dt>
+            <dd class="text-right font-mono text-xs">{{
+              formatVal(execution.path_length_simplified)
+            }}</dd>
+          </div>
+          <div class="flex justify-between gap-4 py-2">
+            <dt class="text-shell-muted">grid_inflation_cells</dt>
+            <dd class="text-right font-mono text-xs">{{
+              formatVal(execution.grid_inflation_cells)
+            }}</dd>
+          </div>
+        </dl>
+        @if (execution.message) {
+          <p class="mt-4 text-xs text-shell-muted border border-shell-line p-2 bg-shell-raised">
+            {{ execution.message }}
+          </p>
+        }
+      } @else {
+        <p class="text-sm text-shell-muted">Awaiting execution.</p>
+      }
+    </section>
+
+    <section
+      class="border border-shell-border bg-shell-surface p-4 lg:col-span-1 lg:col-start-2 lg:row-start-2"
+      aria-label="Telemetry"
+    >
+      <h2 class="text-[10px] tracking-[0.2em] uppercase text-shell-muted mb-4">
+        System Telemetry
+      </h2>
+      @if (telemetryDisplay.length) {
+        <ul class="divide-y divide-shell-line max-h-[420px] overflow-y-auto">
+          @for (e of telemetryDisplay; track e.event_id) {
+            <li class="py-3 grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-2 md:gap-6 text-xs">
+              <span class="font-mono text-shell-muted">{{
+                e.timestamp | date: 'HH:mm:ss.SSS' : 'UTC'
+              }}</span>
+              <span class="font-mono text-[#C9CDD4]">{{ e.event_type }}</span>
+              <span class="text-shell-muted">{{ e.source_component }}</span>
+            </li>
+          }
+        </ul>
+      } @else {
+        <p class="text-sm text-shell-muted">No telemetry. Create and execute a mission.</p>
+      }
+    </section>
+  </main>
+</div>

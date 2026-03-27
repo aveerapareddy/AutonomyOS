@@ -1,0 +1,43 @@
+<div
+  class="flex flex-col h-full min-h-[min(72vh,560px)] border border-shell-border bg-shell-surface"
+  aria-label="Simulator visualization"
+>
+  <div
+    class="flex items-center justify-between px-3 py-2.5 border-b border-shell-border bg-[#0f1114]"
+  >
+    <h2 class="text-[10px] tracking-[0.2em] uppercase text-shell-muted">Simulator</h2>
+    @if (scene.mode === 'idle') {
+      <span class="text-[10px] tracking-[0.14em] uppercase text-shell-muted/90">Idle</span>
+    }
+    @if (scene.mode === 'live') {
+      <span class="text-[10px] tracking-[0.14em] uppercase text-[#9CA3AF]">Live</span>
+    }
+  </div>
+
+  <div class="relative flex-1 min-h-[320px] p-2 bg-[#0d0f12]">
+    @if (scene.mode === 'idle') {
+      <div
+        class="absolute inset-0 flex items-center justify-center pointer-events-none z-10 px-6"
+        aria-hidden="true"
+      >
+        <p class="text-xs text-shell-muted text-center tracking-wide max-w-[240px] leading-relaxed">
+          No mission execution yet
+        </p>
+      </div>
+    }
+    <canvas
+      #mapCanvas
+      class="w-full h-full block rounded-[1px] border border-[#1E2228]"
+      role="img"
+      [attr.aria-label]="scene.mode === 'idle' ? 'Reference warehouse layout' : 'Mission world state'"
+    ></canvas>
+  </div>
+
+  @if (scene.mode === 'idle') {
+    <p
+      class="px-3 py-2 text-[10px] text-shell-muted/75 border-t border-shell-line tracking-wide"
+    >
+      Reference layout; execute a mission to load telemetry and trajectories.
+    </p>
+  }
+</div>

@@ -35,3 +35,7 @@ Thumbs.db
 
 # Simulator / camera demo output (not committed)
 camera_capture.png
+
+# Frontend
+frontend/autonomy-dashboard/node_modules/
+frontend/autonomy-dashboard/dist/
