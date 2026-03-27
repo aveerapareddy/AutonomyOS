@@ -11,30 +11,17 @@ from backend.core.constants import (
     TELEMETRY_SOURCE_PLANNER,
 )
 from backend.schemas.execution import MissionExecutionSummary
+from backend.schemas.planner import MissionPlanRequest
 from backend.schemas.telemetry import TelemetryEventType
 from backend.schemas.world import WorldObject
 from backend.services.execution_service import run_sim_execution
 from backend.services.mission_service import MissionService
+from backend.services.planner_service import PlannerService
 from backend.services.telemetry_service import TelemetryService
 from backend.simulator.grid_map import build_occupancy_grid
 from backend.simulator.world_builder import WorldLayoutSpec, get_world_layout
 
 DEFAULT_ROBOT_START: Tuple[float, float, float] = (0.0, 0.0, 0.0)
-
-
-def _rule_based_plan(mission_text: str) -> List[str]:
-    """Derive plan steps from mission text. No LLM."""
-    text_lower = mission_text.lower().strip()
-    steps: List[str] = []
-    if "red" in text_lower or "target" in text_lower or not text_lower:
-        steps.append("Select target: target")
-    else:
-        steps.append("Select target: target")
-    if "avoid" in text_lower:
-        steps.append("Navigate with obstacle avoidance")
-    else:
-        steps.append("Navigate to target")
-    return steps
 
 
 class OrchestratorService:
@@ -49,12 +36,14 @@ class OrchestratorService:
         ] = None,
         robot_start_provider: Optional[Callable[[], Tuple[float, float, float]]] = None,
         execution_world_layout_provider: Optional[Callable[[], WorldLayoutSpec]] = None,
+        planner_service: Optional[PlannerService] = None,
     ) -> None:
         self._mission_service = mission_service
         self._telemetry_service = telemetry_service
         self._get_layout = world_layout_provider or get_world_layout
         self._get_robot_start = robot_start_provider
         self._get_execution_world_layout = execution_world_layout_provider
+        self._planner = planner_service or PlannerService()
 
     def execute(self, mission_id: str) -> Optional[MissionExecutionSummary]:
         """Run pipeline for the mission. Returns None if mission not found."""
@@ -62,12 +51,21 @@ class OrchestratorService:
         if mission is None:
             return None
 
-        plan_steps = _rule_based_plan(mission.mission_text)
+        plan_response = self._planner.plan(MissionPlanRequest(mission_text=mission.mission_text))
+        mission_plan = plan_response.plan
+        plan_steps = list(mission_plan.plan_steps)
+
         self._telemetry_service.record(
             mission_id,
             TelemetryEventType.PLAN_GENERATED,
             TELEMETRY_SOURCE_PLANNER,
-            {"plan_steps": plan_steps},
+            {
+                "planner_mode": mission_plan.planner_mode,
+                "goal_type": mission_plan.goal_type,
+                "target_label": mission_plan.target_label,
+                "constraints": list(mission_plan.constraints),
+                "plan_steps": plan_steps,
+            },
         )
 
         world_bounds, obstacle_objects, target_object = self._get_layout()

@@ -1,12 +1,13 @@
 """Orchestrator and execute endpoint tests."""
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
 
 from backend.api.main import app
 from backend.schemas.perception import PerceptionResult
+from backend.schemas.planner import MissionPlan, MissionPlanRequest, MissionPlanResponse
 from backend.schemas.world import WorldObject
 from backend.services.mission_service import MissionService
 from backend.services.orchestrator_service import OrchestratorService
@@ -54,6 +55,13 @@ def test_execute_mission_success() -> None:
     event_types = [e["event_type"] for e in events]
     assert "mission_received" in event_types
     assert "plan_generated" in event_types
+    plan_events = [e for e in events if e["event_type"] == "plan_generated"]
+    assert len(plan_events) >= 1
+    pg = plan_events[0]["payload"]
+    assert pg.get("planner_mode") in ("rule_based", "llm")
+    assert "goal_type" in pg
+    assert "plan_steps" in pg
+    assert isinstance(pg.get("constraints"), list)
     assert "perception_completed" in event_types
     assert "path_computed" in event_types
     assert "execution_started" in event_types
@@ -61,6 +69,46 @@ def test_execute_mission_success() -> None:
     assert "execution_completed" in event_types
     assert "mission_completed" in event_types
     assert data["telemetry_count"] == len(events)
+
+
+def test_orchestrator_calls_planner_with_mission_text() -> None:
+    from backend.schemas.mission import MissionRequest
+
+    mission_repo = InMemoryMissionRepository()
+    mission_svc = MissionService(repository=mission_repo)
+    telemetry_svc = TelemetryService()
+    resp = mission_svc.create(MissionRequest(mission_text="Custom mission phrase"))
+    mission_id = resp.mission_id
+    custom_steps = ["step_a", "step_b"]
+    mock_planner = MagicMock()
+    mock_planner.plan.return_value = MissionPlanResponse(
+        plan=MissionPlan(
+            goal_type="inspect",
+            target_label="dock",
+            constraints=["slow"],
+            plan_steps=custom_steps,
+            confidence=0.5,
+            planner_mode="llm",
+        )
+    )
+    with patch("backend.services.orchestrator_service.perceive_from_objects") as mock_perceive:
+        mock_perceive.return_value = PerceptionResult(detected_targets=[], detected_obstacles=[])
+        orch = OrchestratorService(
+            mission_service=mission_svc,
+            telemetry_service=telemetry_svc,
+            planner_service=mock_planner,
+        )
+        summary = orch.execute(mission_id)
+    mock_planner.plan.assert_called_once()
+    req = mock_planner.plan.call_args[0][0]
+    assert isinstance(req, MissionPlanRequest)
+    assert req.mission_text == "Custom mission phrase"
+    assert summary is not None
+    assert summary.plan_steps == custom_steps
+    events = telemetry_svc.get_events_for_mission(mission_id)
+    plan_ev = next(e for e in events if e.event_type == "plan_generated")
+    assert plan_ev.payload.get("planner_mode") == "llm"
+    assert plan_ev.payload.get("plan_steps") == custom_steps
 
 
 def test_execute_no_target_found() -> None:

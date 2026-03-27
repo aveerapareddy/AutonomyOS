@@ -4,7 +4,7 @@
 
 AutonomyOS is an experimental robotics autonomy platform. The goal is to explore how modern AI systems can integrate with robotics simulation: natural language mission input, perception, autonomous navigation, and evaluation of behavior in reproducible scenarios.
 
-The stack is Python (FastAPI, Pydantic) on the backend, PyBullet for simulation, with plans for LLM-based planning and perception integration. The project is built incrementally; the simulation and API layers are kept separate so that navigation, replay, and benchmarking can be added without blocking on a single integration path.
+The stack is Python (FastAPI, Pydantic, httpx) on the backend, PyBullet for simulation, with optional LLM-based planning and perception integration paths. The project is built incrementally; the simulation and API layers are kept separate so that navigation, replay, and benchmarking can be added without blocking on a single integration path.
 
 ## Current Status
 
@@ -29,7 +29,9 @@ The repository currently provides:
 - **Mission timeline retrieval API** — GET `/missions/{mission_id}/telemetry` returns events in order (sequence, then timestamp).
 - **Replay-ready event contracts** — TelemetryEvent (event_id, mission_id, sequence, timestamp, event_type, source_component, payload) and TelemetryEventType enum.
 - **First end-to-end orchestration flow** — POST `/missions/{mission_id}/execute` runs plan-perceive-navigate; returns `MissionExecutionSummary`; 404 when mission not found.
-- **Rule-based mission planning** — Keyword-derived plan steps (e.g. "red", "avoid"); no LLM yet.
+- **LLM-backed mission planner with deterministic fallback** — `PlannerService`: OpenAI-compatible JSON chat when `OPENAI_API_KEY` is set (`OPENAI_MODEL` optional, default `gpt-4o-mini`); keyword `rule_based` path when unset, forced via `AUTONOMY_PLANNER_MODE=rule_based`, or when LLM output is invalid.
+- **Structured mission plans flowing into orchestration** — `MissionPlan` (goal_type, target_label, constraints, plan_steps, etc.) produced by the planner and consumed by `OrchestratorService` for execution summaries; perception and path planning behavior unchanged.
+- **Planner telemetry includes planner mode, goal, constraints, and steps** — `plan_generated` payload fields: `planner_mode`, `goal_type`, `target_label`, `constraints`, `plan_steps`.
 - **Perception + navigation coordination** — Orchestrator loads layout, runs perception, selects target, plans path; clear failure paths for no target / no path.
 - **Replay-ready telemetry events during execution** — plan_generated, perception_completed, path_computed, mission_completed, mission_failed with stable source_component (planner, perception_agent, navigation_agent). Success path: 5 events (mission_received at create plus 4 during execute).
 - **Waypoint execution engine for simulator-based mission runs** — WaypointExecutor drives the robot through navigation waypoints; ExecutionService owns sim lifecycle (create env, run executor, shutdown). Configurable tolerance and max steps per waypoint.
@@ -83,8 +85,8 @@ Run all commands from the repository root (the directory containing `backend/` a
 |-----------|---------|
 | `backend/` | Python package for the service and simulation. |
 | `backend/api/` | FastAPI app, routes (missions, telemetry, replay, benchmarks), dependencies. |
-| `backend/services/` | Business logic (mission lifecycle, orchestrator, orchestration, execution/sim run, telemetry, replay, benchmark, perception_eval). |
-| `backend/schemas/` | Pydantic models (missions, execution, telemetry, replay, perception, perception_eval, navigation, benchmark, camera). |
+| `backend/services/` | Business logic (mission lifecycle, planner, planner_backends, orchestrator, execution/sim run, telemetry, replay, benchmark, perception_eval). |
+| `backend/schemas/` | Pydantic models (missions, planner, execution, telemetry, replay, perception, perception_eval, navigation, benchmark, camera). |
 | `backend/scenarios/` | Scenario config, deterministic generator, benchmark runner. |
 | `backend/simulator/` | PyBullet world, robot, environment, camera/frame capture, occupancy grid. |
 | `backend/agents/` | Navigation agent (A*), perception agent, perception_backends (metadata, YOLO). |
@@ -135,6 +137,14 @@ python scripts/run_perception_demo.py
 ```
 
 Runs the perception agent on the sim world metadata and prints detected targets and obstacles (object_id, type, x, y). No image-based detection; Phase-1 is rule-based from world state.
+
+**Planner demo**
+
+```bash
+python scripts/run_planner_demo.py
+```
+
+Runs `PlannerService` on sample mission strings and prints `MissionPlan` fields and `planner_mode` (`rule_based` or `llm`). Without `OPENAI_API_KEY`, output uses deterministic rules only.
 
 **Perception evaluation demo**
 
@@ -210,8 +220,10 @@ Mission API tests always run; simulator tests are skipped if PyBullet is not ins
 - No replanning during movement; one plan per execute.
 - Default mission path uses robot start (0, 0) unless a robot_start_provider is supplied (e.g. benchmark scenarios).
 - Static world layout only for non-benchmark missions; single fixed warehouse layout, world_id not used.
-- Planner is deterministic, not LLM-based yet; plan steps are keyword-derived.
 - Static planning only; world is fixed at plan time.
+- Planner output is only partially used downstream (e.g. `plan_steps` in summaries; `target_label` / richer goals do not yet drive target selection or motion).
+- Constraints are not yet affecting navigation behavior (planner may emit `avoid_obstacles`; path execution still follows the grid plan only).
+- Non-navigation intents still degrade to generic plans (rule-based defaults; LLM may propose inspect/dock-style goals without dedicated execution support).
 - Path simplification is collinear-only (reduces straight-line noise); no curve fitting or smoothing.
 - Perception: orchestration uses metadata only; image-based (YOLO) not yet integrated into mission execution.
 - YOLO not yet integrated into orchestration; object-based path remains metadata-backed.
