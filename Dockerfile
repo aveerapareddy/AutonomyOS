@@ -5,7 +5,7 @@ RUN npm ci
 COPY frontend/autonomy-dashboard/ ./
 RUN npm run build -- --base-href /demo/
 
-FROM python:3.12-slim-bookworm
+FROM python:3.11-slim-bookworm
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 \
     AUTONOMY_PLANNER_MODE=rule_based AUTONOMY_DATABASE_PATH=/data/autonomy.sqlite3 \
     AUTONOMY_FRONTEND_DIRECTORY=/app/dashboard AUTONOMY_PUBLIC_DEMO=true
