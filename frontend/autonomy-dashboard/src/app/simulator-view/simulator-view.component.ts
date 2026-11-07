@@ -5,6 +5,7 @@ import {
   HostListener,
   Input,
   OnChanges,
+  OnDestroy,
   SimpleChanges,
   ViewChild,
 } from '@angular/core';
@@ -16,16 +17,49 @@ import type { SimulatorScene } from '../simulator/simulator-scene.model';
   standalone: true,
   templateUrl: './simulator-view.component.html',
 })
-export class SimulatorViewComponent implements AfterViewInit, OnChanges {
+export class SimulatorViewComponent implements AfterViewInit, OnChanges, OnDestroy {
   @Input({ required: true }) scene!: SimulatorScene;
 
   @ViewChild('mapCanvas') private canvasRef?: ElementRef<HTMLCanvasElement>;
 
+  @ViewChild('threeCanvas') private threeCanvasRef?: ElementRef<HTMLCanvasElement>;
+
   private viewReady = false;
+  private industrial?: import('../simulator/industrial-view').IndustrialView;
+  private destroyed = false;
+  private viewGeneration = 0;
+  viewMode: '2d' | '3d' = '2d';
+  viewError = '';
+
+  async setView(mode: '2d' | '3d'): Promise<void> {
+    this.industrial?.dispose();
+    this.industrial = undefined;
+    const generation = ++this.viewGeneration;
+    this.viewMode = mode;
+    const fresh = this.threeCanvasRef?.nativeElement;
+    if (!fresh) return;
+    if (mode === '3d') {
+      try {
+        const { IndustrialView } = await import('../simulator/industrial-view');
+        if (this.destroyed || generation !== this.viewGeneration) return;
+        this.industrial = new IndustrialView(fresh);
+        this.viewError = '';
+      } catch {
+        this.viewError = '3D rendering unavailable. Use the 2D view.';
+        return;
+      }
+    }
+    this.redraw();
+  }
+
+  ngOnDestroy(): void {
+    this.destroyed = true;
+    this.industrial?.dispose();
+  }
 
   ngAfterViewInit(): void {
     this.viewReady = true;
-    this.redraw();
+    void this.setView('3d');
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -44,6 +78,10 @@ export class SimulatorViewComponent implements AfterViewInit, OnChanges {
   private redraw(): void {
     const canvas = this.canvasRef?.nativeElement;
     if (!canvas || !this.scene) {
+      return;
+    }
+    if (this.viewMode === '3d') {
+      this.industrial?.update(this.scene);
       return;
     }
     const parent = canvas.parentElement;
