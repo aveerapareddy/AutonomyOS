@@ -1,5 +1,9 @@
 # AutonomyOS 2.0 CPU reference demo
 
+> Current status: the second GPU run was saved and independently verified before shutdown.
+> The governed workflow is implemented and the integrated backend passes 135 tests.
+> See [the current validation record](VALIDATION_RERUN.md); older snapshots below are historical.
+
 Run from the repository root, Python 3.12:
 
 ```sh

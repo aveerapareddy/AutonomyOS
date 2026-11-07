@@ -1,6 +1,12 @@
 .git
 .venv
-__pycache__
+**/node_modules
+**/dist
+**/__pycache__
 .pytest_cache
-artifacts
 .env*
+work
+artifacts
+*.pt
+*.sqlite3*
+

@@ -5,10 +5,13 @@
 The CPU experiment control plane adds durable workflow history, real seeded
 simulation runs, completion evaluations, source/input/outcome fingerprints and
 reproduction comparisons. Optional OpenUSD geometry export is round-trip tested.
-PyTorch/Hugging Face Nemotron inference and an Isaac Sim stage/physics smoke test
-were observed on a rented RTX GPU. NIM and Cosmos remain unverified. The first
-GPU run's raw archive was lost after a failed download and timed shutdown; its
-Isaac result screenshot is preserved. See the demo guide for exact evidence limits.
+PyTorch/Hugging Face Nemotron inference and an Isaac Sim geometry/physics smoke
+check passed on a rented RTX host. The rerun's 35-file evidence archive was copied
+locally and independently verified before both pods were stopped. NIM and Cosmos
+remain unverified. The governed decision layer now binds approval to an exact model
+proposal, enforces a bounded tool policy, and persists execution and failure events.
+See [the governed workflow](docs/AGENT_WORKFLOW.md) and
+[the validation record](docs/VALIDATION_RERUN.md) for scope and evidence boundaries.
 No production or physical-safety claim is made.
 
 Start with [the phased audit and gap matrix](docs/AUTONOMYOS_2.md) and
@@ -18,7 +21,7 @@ Start with [the phased audit and gap matrix](docs/AUTONOMYOS_2.md) and
 
 AutonomyOS is an experimental robotics autonomy platform. The goal is to explore how modern AI systems can integrate with robotics simulation: natural language mission input, perception, autonomous navigation, and evaluation of behavior in reproducible scenarios.
 
-The stack is Python (FastAPI, Pydantic) on the backend, PyBullet for simulation, with plans for LLM-based planning and perception integration. The project is built incrementally; the simulation and API layers are kept separate so that navigation, replay, and benchmarking can be added without blocking on a single integration path.
+The stack is Python (FastAPI, Pydantic, httpx) on the backend, PyBullet for simulation, Angular + Tailwind for the operator dashboard, with optional LLM-based planning and perception integration paths. The project is built incrementally; the simulation and API layers are kept separate so that navigation, replay, and benchmarking can be added without blocking on a single integration path.
 
 ## Current Status
 
@@ -43,14 +46,17 @@ The repository currently provides:
 - **Mission timeline retrieval API** — GET `/missions/{mission_id}/telemetry` returns events in order (sequence, then timestamp).
 - **Replay-ready event contracts** — TelemetryEvent (event_id, mission_id, sequence, timestamp, event_type, source_component, payload) and TelemetryEventType enum.
 - **First end-to-end orchestration flow** — POST `/missions/{mission_id}/execute` runs plan-perceive-navigate; returns `MissionExecutionSummary`; 404 when mission not found.
-- **Rule-based mission planning** — Keyword-derived plan steps (e.g. "red", "avoid"); no LLM yet.
+- **LLM-backed mission planner with deterministic fallback** — `PlannerService`: OpenAI-compatible JSON chat when `OPENAI_API_KEY` is set (`OPENAI_MODEL` optional, default `gpt-4o-mini`); keyword `rule_based` path when unset, forced via `AUTONOMY_PLANNER_MODE=rule_based`, or when LLM output is invalid.
+- **Structured mission plans flowing into orchestration** — `MissionPlan` (goal_type, target_label, constraints, plan_steps, etc.) produced by the planner and consumed by `OrchestratorService` for execution summaries; perception and path planning behavior unchanged.
+- **Planner-driven target selection and constraint-aware execution** — `target_label` selects among metadata detections (targets and obstacles); `avoid_obstacles` increases occupancy-grid inflation for path planning; `MissionExecutionSummary` carries planner fields, path metrics, and inflation used.
+- **Planner telemetry includes planner mode, goal, constraints, and steps** — `plan_generated` includes `grid_inflation_cells`; `path_computed` includes `path_length_raw`, `path_length_simplified`, `grid_inflation_cells`, `constraints_applied`; `perception_completed` includes `planned_target_label`.
 - **Perception + navigation coordination** — Orchestrator loads layout, runs perception, selects target, plans path; clear failure paths for no target / no path.
 - **Replay-ready telemetry events during execution** — plan_generated, perception_completed, path_computed, mission_completed, mission_failed with stable source_component (planner, perception_agent, navigation_agent). Success path: 5 events (mission_received at create plus 4 during execute).
 - **Waypoint execution engine for simulator-based mission runs** — WaypointExecutor drives the robot through navigation waypoints; ExecutionService owns sim lifecycle (create env, run executor, shutdown). Configurable tolerance and max steps per waypoint.
 - **End-to-end mission pipeline from planning to execution** — POST execute runs plan, perceive, navigate, then sim execution; MissionExecutionSummary includes execution_steps, final_robot_position, execution_status.
 - **Execution telemetry for waypoint completion and mission status** — execution_started, waypoint_reached, execution_completed, execution_failed with source_component execution_engine; mission_completed/mission_failed from orchestrator_service. Stable source names: planner, perception_agent, navigation_agent, execution_engine, orchestrator_service.
 - **Mission replay foundation** — GET `/missions/{mission_id}/replay` returns event-driven replay (MissionReplay: frames from telemetry). ReplayService builds ReplayFrames from events; robot_position and target_position normalized from payloads. Telemetry is source of truth; replay is a view.
-- **Event-driven decision trace** — Each telemetry event becomes one ReplayFrame; frames preserve chronological order; milestones (execution_started, waypoint_reached, path_computed, mission_completed, etc.) appear as frames. No continuous playback or frontend UI yet.
+- **Event-driven decision trace** — Each telemetry event becomes one ReplayFrame; frames preserve chronological order; milestones (execution_started, waypoint_reached, path_computed, mission_completed, etc.) appear as frames. Operator dashboard shows raw telemetry timelines; no replay scrubber or sim canvas yet.
 - **Replay foundation built from telemetry events** — Replay is a view over telemetry; no separate store. Sequence primary, timestamp secondary for ordering.
 - **Decision-trace frames derived from mission telemetry** — ReplayFrame (index, event_type, source_component, timestamp, robot_position, target_position, payload) per event.
 - **Replay API for reconstructing mission execution history** — GET `/missions/{mission_id}/replay` returns MissionReplay (mission_id, frame_count, frames); 404 if mission not found.
@@ -61,6 +67,24 @@ The repository currently provides:
 - **Simplified waypoint generation** — A* path is simplified by collapsing collinear waypoints; NavigationResult exposes path_length_raw and path_length; benchmark results include path_length_raw per scenario.
 - **Scenario-driven simulator world construction** — WorldLayoutSpec and build_world_from_config; SimulationEnvironment accepts optional world_layout; same layout drives planning and execution in benchmarks.
 - **Aligned planning and execution geometry** — Benchmark runs use scenario bounds, obstacles, target, and robot start for both path planning and sim execution; single source of truth per scenario.
+- **Phase-2 perception backend with YOLO integration path** — Metadata and YOLO backends; `PerceptionBackend` protocol, `MetadataPerceptionBackend`, `YoloPerceptionBackend`, `PerceptionFacade` for backend selection; `perceive_image()` for vision path.
+- **Stable shared perception contract** — Same `PerceptionRequest`/`PerceptionResult`/`DetectedObject` across metadata and image-based backends; orchestration uses metadata by default.
+- **Graceful fallback when YOLO unavailable** — If `ultralytics` is not installed or model load fails, image path returns `PerceptionResult` with message and empty lists; no raise.
+- **Simulator frame capture** — `SimulationEnvironment.capture_frame(CameraConfig)` returns RGB `CapturedFrame`; PyBullet TINY_RENDERER; deterministic default preset.
+- **Camera abstraction for image-based perception** — `CameraConfig` (width, height, target, distance, yaw, pitch, roll); `CapturedFrame` (rgb, dimensions, `camera_pose`, `camera_intrinsics`, `timestamp`); reusable for replay/UI.
+- **Camera pose and intrinsic metadata support** — `CameraPose` (world position, yaw/pitch/roll from config); `CameraIntrinsics` (resolution, vertical FOV in degrees, near/far); pose position derived from PyBullet view matrix inverse for alignment with rendering.
+- **Basic image-to-world projection layer** — `project_to_world` / `project_detections` in `backend/services/projection_service.py`; schemas in `backend/schemas/projection.py`.
+- **Simulator-frame detections** — Can be mapped into approximate world coordinates using camera pose and intrinsics from `CapturedFrame` (demo: `scripts/run_projection_demo.py`).
+- **Perception evaluation foundation** — Compare simulator ground truth (target + obstacles) with perception outputs; `PerceptionMatch` and `PerceptionEvalResult` (optional precision/recall); metadata backend matched by type and world position.
+- **Projected detection evaluation against simulator truth** — `evaluate_projected_detections()` matches projected image detections to truth objects; uses approximate world coordinates from `project_detections()`, not calibrated geometry.
+- **Approximate world-space evaluation for image-based detections** — After projection, image backends (e.g. YOLO in demos) are evaluated in approximate world space against truth; see `scripts/run_perception_eval_demo.py`.
+- **Simulator-truth vs perception comparison** — Truth from `truth_objects_from_world()`; `evaluate_perception()` for metadata; projected path for image backends; demo runs both.
+- **Dashboard foundation** — `frontend/autonomy-dashboard`: Angular 18 SPA, dark industrial UI (Tailwind), local API base URL in `src/environments`.
+- **Mission control UI** — Create mission (POST `/missions`), execute (POST `/missions/{id}/execute`), header status and planner mode display.
+- **Mission planner and execution visualization** — Panels for planner fields (`planner_mode`, goals, constraints, steps) and `MissionExecutionSummary` path metrics after run.
+- **Telemetry panel** — GET `/missions/{id}/telemetry`; ordered events (newest first) with timestamp, type, source.
+- **Simulator visualization panel** — Top-down HTML canvas in the dashboard; world bounds, static obstacles, target, robot pose, planned waypoint polyline, and executed path when telemetry allows.
+- **Top-down rendering of robot, target, obstacles, and paths** — Data from `MissionExecutionSummary` plus execution engine telemetry; reference warehouse geometry when no run has completed yet (idle state).
 
 **Simulator architecture**
 
@@ -68,26 +92,29 @@ The repository currently provides:
 - **execution_engine.py** — WaypointExecutor: drives robot through waypoints (turn toward waypoint, forward until within tolerance); emits execution telemetry; ExecutionConfig (waypoint_tolerance, turn_threshold, max_steps_per_waypoint).
 - **world_builder.py** — Builds a deterministic scene: default `build_world()` or scenario-driven `build_world_from_config(WorldLayoutSpec)`. Returns a `BuiltWorld`; `WorldLayoutSpec` carries bounds, obstacle_positions, obstacle_types, target_position (no PyBullet).
 - **robot.py** — Kinematic robot (box body); maintains (x, y, theta) and syncs to PyBullet; exposes `forward`, `backward`, `turn_left`, `turn_right`, `stop` and `get_pose()`.
-- **environment.py** — Connects to PyBullet (DIRECT or GUI). Optional `world_layout: WorldLayoutSpec` builds scenario world; otherwise default world. Exposes `reset()`, `step(RobotAction)`, `get_robot_pose()`, `get_world_bounds()`, `get_obstacles()`, `get_obstacle_types()`, `get_target_pose()`, `shutdown()`. No API or mission coupling.
+- **environment.py** — Connects to PyBullet (DIRECT or GUI). Optional `world_layout: WorldLayoutSpec` builds scenario world; otherwise default world. Exposes `reset()`, `step(RobotAction)`, `get_robot_pose()`, `get_world_bounds()`, `get_obstacles()`, `get_obstacle_types()`, `get_target_pose()`, `capture_frame(CameraConfig)`, `shutdown()`. No API or mission coupling.
+- **camera.py** — `default_camera_config()` preset; `capture_frame(client_id, config)` via PyBullet getCameraImage (TINY_RENDERER); returns RGB as uint8 (H, W, 3).
 - **grid_map.py** — Builds a 2D occupancy grid from world bounds and obstacle positions; configurable `inflation_radius` (grid cells); `world_to_grid`, `grid_to_world`, `is_blocked`, `neighbors` for path planning.
 - **agents/navigation_agent.py** — A* path planning on an occupancy grid; collinear waypoint simplification; returns world-space waypoints with path_length and path_length_raw.
-- **agents/perception_agent.py** — Rule-based perception from world metadata; returns `PerceptionResult` (targets, obstacles); swappable with YOLO later.
+- **agents/perception_agent.py** — Stable contract; `perceive_from_objects` (via facade, metadata backend); `perceive_image` (via facade, YOLO when available); `get_yolo_backend_status()`.
+- **agents/perception_backends/** — `base`: `PerceptionBackend` protocol, `PerceptionFacade`; `metadata_backend`: `MetadataPerceptionBackend`; `yolo_backend`: `YoloPerceptionBackend` (vision; optional ultralytics).
 - **schemas/navigation.py** — Waypoint, NavigationRequest, NavigationResult.
 - **schemas/perception.py** — DetectedObject, PerceptionRequest, PerceptionResult.
 
 ## Repository Structure
 
-Run all commands from the repository root (the directory containing `backend/` and `scripts/`).
+Run all commands from the repository root (the directory containing `backend/`, `frontend/`, and `scripts/`).
 
 | Directory | Purpose |
 |-----------|---------|
+| `frontend/autonomy-dashboard/` | Angular dashboard: mission control, planner/execution readouts, telemetry list. |
 | `backend/` | Python package for the service and simulation. |
 | `backend/api/` | FastAPI app, routes (missions, telemetry, replay, benchmarks), dependencies. |
-| `backend/services/` | Business logic (mission lifecycle, orchestrator, orchestration, execution/sim run, telemetry, replay, benchmark). |
-| `backend/schemas/` | Pydantic models (missions, execution, telemetry, replay, perception, navigation, benchmark). |
+| `backend/services/` | Business logic (mission lifecycle, planner, planner_backends, orchestrator, execution/sim run, telemetry, replay, benchmark, perception_eval). |
+| `backend/schemas/` | Pydantic models (missions, planner, execution, telemetry, replay, perception, perception_eval, navigation, benchmark, camera). |
 | `backend/scenarios/` | Scenario config, deterministic generator, benchmark runner. |
-| `backend/simulator/` | PyBullet world, robot, environment, occupancy grid. |
-| `backend/agents/` | Navigation agent (A*), perception agent (rule-based from world metadata). |
+| `backend/simulator/` | PyBullet world, robot, environment, camera/frame capture, occupancy grid. |
+| `backend/agents/` | Navigation agent (A*), perception agent, perception_backends (metadata, YOLO). |
 | `backend/storage/` | Storage abstractions and repository implementations. |
 | `scripts/` | One-off and demo scripts (e.g. simulator demo). |
 
@@ -114,6 +141,16 @@ uvicorn backend.api.main:app --reload
 
 API base URL: `http://127.0.0.1:8000` (or the host/port you configure). Health: `GET /health`. Missions: `POST /missions`, `GET /missions/{mission_id}`. Execute: `POST /missions/{mission_id}/execute` (runs plan-perceive-navigate and waypoint execution in sim; returns summary). Telemetry: `GET /missions/{mission_id}/telemetry`. Replay: `GET /missions/{mission_id}/replay`. Benchmarks: `POST /benchmarks/run` (body: `benchmark_name`, `scenario_count`, optional `seed`; returns BenchmarkSummary).
 
+**Dashboard**
+
+```bash
+cd frontend/autonomy-dashboard
+npm install
+npm start
+```
+
+Serves at `http://localhost:4200`. Run the backend first; CORS allows this origin. Change `apiUrl` in `src/environments/environment.development.ts` if the API is not at `http://127.0.0.1:8000`.
+
 **Simulator demo**
 
 ```bash
@@ -136,6 +173,22 @@ python scripts/run_perception_demo.py
 
 Runs the perception agent on the sim world metadata and prints detected targets and obstacles (object_id, type, x, y). No image-based detection; Phase-1 is rule-based from world state.
 
+**Planner demo**
+
+```bash
+python scripts/run_planner_demo.py
+```
+
+Runs `PlannerService` on sample mission strings and prints `MissionPlan` fields and `planner_mode` (`rule_based` or `llm`). Without `OPENAI_API_KEY`, output uses deterministic rules only.
+
+**Perception evaluation demo**
+
+```bash
+python scripts/run_perception_eval_demo.py
+```
+
+Initializes the simulator, derives truth objects (target + obstacles), runs metadata perception and evaluates it (match counts and per-object matches). If YOLO is available, captures a frame and evaluates YOLO output (no position matching to world truth). Works when YOLO is unavailable.
+
 **Execution demo**
 
 ```bash
@@ -143,6 +196,23 @@ python scripts/run_execution_demo.py
 ```
 
 Creates a mission, runs the full pipeline (plan, perceive, navigate, waypoint execution in the simulator), and prints the execution summary and final robot position.
+
+**YOLO perception demo** (Phase 2; requires `ultralytics`)
+
+```bash
+pip install -r backend/requirements.txt
+python scripts/run_yolo_perception_demo.py
+```
+
+With no arguments, runs on a synthetic image. Pass an image path to run on a file: `python scripts/run_yolo_perception_demo.py path/to/image.jpg`. First run may download the default model (`yolov8n.pt`) from the Ultralytics CDN; model weights are not committed to the repo.
+
+**Camera / frame capture demo**
+
+```bash
+python scripts/run_camera_demo.py
+```
+
+Initializes the simulator, captures one frame with the default camera preset, prints frame shape and metadata, and optionally runs YOLO on the captured frame if `ultralytics` is available. If PIL is installed, the frame is saved to `camera_capture.png` in the current working directory (repository root if run from there).
 
 The simulator, navigation, and perception are tested with Python 3.11 and 3.12 on macOS (pybullet-mm for pip install).
 
@@ -185,27 +255,41 @@ Mission API tests always run; simulator tests are skipped if PyBullet is not ins
 - No replanning during movement; one plan per execute.
 - Default mission path uses robot start (0, 0) unless a robot_start_provider is supplied (e.g. benchmark scenarios).
 - Static world layout only for non-benchmark missions; single fixed warehouse layout, world_id not used.
-- Planner is deterministic, not LLM-based yet; plan steps are keyword-derived.
 - Static planning only; world is fixed at plan time.
+- `goal_type` and most `plan_steps` are descriptive; only `target_label`, `constraints` (via grid inflation), and summary/telemetry wiring are tightly coupled to the pipeline.
+- `avoid_obstacles` affects grid inflation only, not runtime obstacle avoidance or replanning; execution still tracks fixed waypoints.
+- Non-navigation intents still degrade to generic plans (rule-based defaults; LLM may propose inspect/dock-style goals without dedicated execution support).
+- Planned `target_label` matching uses simple string and `object_type` heuristics, not semantic search; goals that coincide with occupied grid cells may still fail at planning time.
 - Path simplification is collinear-only (reduces straight-line noise); no curve fitting or smoothing.
-- Perception: metadata-based detection only; no image-based perception yet; no tracking across frames.
+- Perception: orchestration uses metadata only; image-based (YOLO) not yet integrated into mission execution.
+- YOLO not yet integrated into orchestration; object-based path remains metadata-backed.
+- Projection is approximate and ground-plane only.
+- No calibration or true depth modeling yet.
+- Semantic-family matching is coarse (detector labels mapped to target vs obstacle families; not class-accurate).
+- Projected precision/recall are not benchmark-grade yet.
+- Default YOLO model is generic COCO; label-to-truth matching uses a small explicit compatibility map (e.g. person to obstacle family), not warehouse-specific training.
 - Telemetry is in-memory only; no persistence yet.
 - Event-level replay only; one frame per telemetry event.
 - No continuous playback or interpolation between frames.
 - Replay depends on telemetry payload completeness (robot_position, target_position when payload includes them).
 - No event filtering yet; replay returns all events as frames.
+- Dashboard is a control and readout shell only: no simulator viewport, replay scrubber, or benchmark charts.
 - Backlog: plan steps to become typed (structured); include target_x/target_y in execution event payloads so replay frames get target_position for UI; unified scenario adapter so planning layout and simulator WorldLayoutSpec derive from one conversion path (avoid drift between _layout_from_scenario and _world_layout_spec_from_scenario).
 
-## Roadmap
+## Development Roadmap
 
-- **Phase 1 — Core autonomy stack**  
-  Connect mission API to the simulator; mission planning and execution loop; telemetry and basic replay/trace.
+### Phase 1 — Autonomy Platform (completed)
+- mission management
+- simulator
+- perception contract
+- navigation
+- execution engine
+- telemetry
+- replay
+- scenario generation
+- benchmarking
 
-- **Phase 2 — YOLO perception integration**  
-  Perception pipeline (e.g. OpenCV then YOLO) for object detection; feed observations into navigation and mission state.
-
-- **Phase 3 — Reinforcement learning navigation**  
-  Train or integrate policies for goal-directed navigation in the warehouse environment; optional LangGraph or similar for high-level control.
-
-- **Phase 4 — Scenario benchmarking and evaluation**  
-  Parameterized scenario generation; benchmark runs; metrics and evaluation for autonomy behavior.
+### Phase 2 — AI Perception (in progress)
+- YOLO-based perception backend
+- vision pipeline
+- perception benchmarking

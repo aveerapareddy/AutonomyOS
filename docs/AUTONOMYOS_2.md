@@ -1,5 +1,9 @@
 # AutonomyOS 2.0: evidence-first simulation automation
 
+> Current status: the second GPU run was saved and independently verified before shutdown.
+> The governed workflow is implemented and the integrated backend passes 135 tests.
+> See [the current validation record](VALIDATION_RERUN.md); older snapshots below are historical.
+
 ## Audit and provenance
 
 Audited upstream commit `8da6b73cac470d6280b4369038a6346e96ff4e48` on 2026-11-07.
@@ -115,5 +119,21 @@ PyTorch/Hugging Face Nemotron inference and an Isaac Sim geometry/physics smoke
 check were observed on a paid RTX 6000 Ada host. See DEMO.md for measured results,
 scope limits and the evidence-transfer failure. This advances the NVIDIA ecosystem
 gap beyond protocol-only tests, but NIM serving, Isaac navigation, Cosmos and cloud
-orchestration remain incomplete. The first GPU run's raw evidence needs a repeat
-export; only its result screenshot is currently preserved locally.
+orchestration remain incomplete. The first run lost its raw archive; the second run now has a complete independently verified local archive; see VALIDATION_RERUN.md.
+
+
+## Updated gap matrix after the rerun and integration
+
+| Requirement | Verified evidence | Remaining work |
+|---|---|---|
+| Agent orchestration | Real model proposal; bounded typed tool; durable exact-digest review; negative gates and cached result | Multi-agent reasoning and authenticated approval |
+| Simulation automation/evals | Seeded experiments, repeat hashes, 99/100 baseline retained, 135 combined tests | Held-out tuning study and richer task metrics |
+| Observability | Mission and workflow SQLite journals, ordered raw events, provenance and artifact integrity | OpenTelemetry collector/exporter and operational dashboards |
+| NVIDIA/PyTorch/HF | Pinned Nemotron inference on RTX; USD import and Isaac CPU-physics smoke | NIM endpoint, NeMo, Cosmos, Isaac robot/sensor workloads |
+| Reproducibility | Exact GPU source and 35-file archive verified before shutdown; governed CPU demo | Full merged-source GPU rerun only if later changes require it |
+| UI/delivery | Integrated phase-2-ai dashboard and CPU deployment recipe | This local merge is not pushed/deployed; no live URL claimed |
+| RAG/tuning | Not implemented | Versioned corpus, labeled retrieval evaluation, train/validation/held-out seeds |
+
+Next planned increment is versioned engineering retrieval and held-out parameter
+search. Approval/authentication, distributed scheduling and production deployment
+remain separate gates. A resume cannot yet claim the full planned scope.

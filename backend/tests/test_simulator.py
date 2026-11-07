@@ -92,3 +92,19 @@ def test_default_environment_unchanged_without_world_layout() -> None:
         assert target.y == 3.0
     finally:
         env.shutdown()
+
+
+def test_visual_obstacle_extents_match_default_physics():
+    import pybullet as pb
+    from backend.simulator.environment import SimulationEnvironment
+    from backend.simulator.world_builder import get_world_layout
+    env = SimulationEnvironment(use_gui=False)
+    try:
+        _, obstacles, _ = get_world_layout()
+        # Body zero is the ground; subsequent bodies are the static obstacles.
+        for index, obstacle in enumerate(obstacles, start=1):
+            low, high = pb.getAABB(index)
+            measured = tuple((b - a) / 2 for a, b in zip(low, high))
+            assert measured == pytest.approx(obstacle.half_extents)
+    finally:
+        env.shutdown()

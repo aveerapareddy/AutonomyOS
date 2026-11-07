@@ -58,3 +58,8 @@ def test_get_mission_not_found() -> None:
     response = client.get("/missions/nonexistent_id_12345")
     assert response.status_code == 404
     assert response.json()["detail"] == "Mission not found"
+
+
+def test_mission_input_rejects_oversized_and_non_text():
+    for value in ('x' * 4001, 123, ['Navigate to target']):
+        assert client.post('/missions', json={'mission_text': value}).status_code == 422

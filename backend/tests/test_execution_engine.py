@@ -71,3 +71,21 @@ def test_waypoint_executor_failure_max_steps() -> None:
         assert "execution_failed" in event_types
     finally:
         env.shutdown()
+
+
+def test_sampled_state_is_simulator_pose():
+    pytest.importorskip("pybullet")
+    env = SimulationEnvironment(use_gui=False)
+    try:
+        telemetry = TelemetryService()
+        config = ExecutionConfig(max_steps_per_waypoint=4, telemetry_interval_steps=1)
+        WaypointExecutor(env, "sampled", telemetry, config).execute([Waypoint(x=10, y=0)])
+        frames = [e for e in telemetry.get_events_for_mission("sampled") if e.event_type == "robot_state"]
+        assert [e.payload["simulation_step"] for e in frames] == [1, 2, 3, 4]
+        pose = env.get_robot_pose()
+        assert frames[-1].payload["robot_x"] == pytest.approx(pose.x)
+        assert frames[-1].payload["robot_y"] == pytest.approx(pose.y)
+        assert frames[-1].payload["robot_theta"] == pytest.approx(pose.theta)
+        assert frames[-1].payload["backend"] == "pybullet"
+    finally:
+        env.shutdown()
