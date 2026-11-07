@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnDestroy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { SimulatorViewComponent } from './simulator-view/simulator-view.component';
 import { buildSimulatorScene } from './simulator/simulator-scene.adapter';
@@ -15,8 +15,46 @@ type HeaderRunState = 'READY' | 'RUNNING' | 'COMPLETED' | 'FAILED';
   imports: [CommonModule, FormsModule, SimulatorViewComponent],
   templateUrl: './app.component.html',
 })
-export class AppComponent {
+export class AppComponent implements OnDestroy {
   private readonly api = inject(MissionApiService);
+
+  replayIndex = -1;
+  replayPlaying = false;
+  private replayTimer?: ReturnType<typeof setInterval>;
+
+  ngOnDestroy(): void { this.stopReplay(); }
+
+  stopReplay(): void {
+    if (this.replayTimer) clearInterval(this.replayTimer);
+    this.replayTimer = undefined;
+    this.replayPlaying = false;
+  }
+
+  seekReplay(value: number): void {
+    this.stopReplay();
+    this.replayIndex = Math.max(0, Math.min(Number(value), this.telemetryEvents.length - 1));
+    this.refreshSimulatorScene();
+  }
+
+  playReplay(): void {
+    if (this.replayPlaying) { this.stopReplay(); return; }
+    if (!this.telemetryEvents.length) return;
+    if (this.replayIndex < 0 || this.replayIndex >= this.telemetryEvents.length - 1) this.replayIndex = 0;
+    this.replayPlaying = true;
+    this.refreshSimulatorScene();
+    // Recorded-event playback at 10 events/s, not wall-clock live simulation.
+    this.replayTimer = setInterval(() => {
+      if (this.replayIndex >= this.telemetryEvents.length - 1) { this.stopReplay(); return; }
+      this.replayIndex++;
+      this.refreshSimulatorScene();
+    }, 100);
+  }
+
+  showResult(): void {
+    this.stopReplay();
+    this.replayIndex = -1;
+    this.refreshSimulatorScene();
+  }
 
   missionText = '';
   currentMissionId: string | null = null;
@@ -41,6 +79,7 @@ export class AppComponent {
   }
 
   createMission(): void {
+    this.showResult();
     this.apiError = null;
     const text = this.missionText.trim();
     if (!text) {
@@ -63,6 +102,7 @@ export class AppComponent {
   }
 
   executeMission(): void {
+    this.showResult();
     this.apiError = null;
     if (!this.currentMissionId) {
       this.apiError = 'Create a mission first';
@@ -120,7 +160,8 @@ export class AppComponent {
   }
 
   private refreshSimulatorScene(): void {
-    this.simulatorScene = buildSimulatorScene(this.execution, this.telemetryEvents);
+    const events = this.replayIndex < 0 ? this.telemetryEvents : this.telemetryEvents.slice(0, this.replayIndex + 1);
+    this.simulatorScene = buildSimulatorScene(this.execution, events, this.replayIndex >= 0);
   }
 
   formatVal(v: string | number | boolean | null | undefined): string {

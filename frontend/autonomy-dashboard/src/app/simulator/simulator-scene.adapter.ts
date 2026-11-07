@@ -116,7 +116,7 @@ function executedPathFromTelemetry(events: TelemetryEvent[]): Vec2[] {
       if (x !== null && y !== null) {
         raw.push({ x, y });
       }
-    } else if (e.event_type === 'waypoint_reached') {
+    } else if (['waypoint_reached', 'robot_state', 'execution_completed', 'execution_failed'].includes(e.event_type)) {
       const x = num(e.payload['robot_x']);
       const y = num(e.payload['robot_y']);
       if (x !== null && y !== null) {
@@ -163,6 +163,7 @@ export function buildIdleSimulatorScene(): SimulatorScene {
 export function buildSimulatorScene(
   execution: MissionExecutionSummary | null,
   telemetry: TelemetryEvent[],
+  replay = false,
 ): SimulatorScene {
   if (!execution) {
     return buildIdleSimulatorScene();
@@ -172,7 +173,11 @@ export function buildSimulatorScene(
     execution.obstacles?.map((o) => ({ x: o.x, y: o.y })) ?? [];
   const apiBounds = boundsFromApi(execution);
   const target = vecFromTargetRecord(execution.detected_target ?? undefined);
-  const robot = vecFromRobotRecord(execution.final_robot_position ?? undefined);
+  const latestPose = [...telemetry].sort((a, b) => b.sequence - a.sequence)
+    .find(e => num(e.payload['robot_x']) !== null && num(e.payload['robot_y']) !== null);
+  const robot = replay
+    ? (latestPose ? vecFromRobotRecord({ x: latestPose.payload['robot_x'], y: latestPose.payload['robot_y'], theta: latestPose.payload['robot_theta'] }) : null)
+    : vecFromRobotRecord(execution.final_robot_position ?? undefined);
   const execStart = executionStartFromTelemetry(telemetry);
   const plannedPath = plannedFromExecution(execution, execStart);
   let executedPath = executedPathFromTelemetry(telemetry);

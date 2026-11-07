@@ -133,6 +133,16 @@
     <div
       class="lg:col-start-2 lg:row-start-1 lg:sticky lg:self-start lg:top-6 min-h-0"
     >
+      @if (telemetryEvents.length && execution) {
+        <div class="flex flex-wrap items-center gap-3 p-3 border border-shell-border text-xs text-shell-muted" aria-label="Recorded replay controls">
+          <button type="button" (click)="playReplay()">{{ replayPlaying ? 'Pause replay' : 'Play recorded replay' }}</button>
+          <label for="replay-frame">Recorded event</label>
+          <input id="replay-frame" type="range" min="0" [max]="telemetryEvents.length - 1"
+            [ngModel]="replayIndex < 0 ? telemetryEvents.length - 1 : replayIndex" (ngModelChange)="seekReplay($event)" />
+          <span>{{ replayIndex < 0 ? 'Execution result' : 'Recorded event ' + (replayIndex + 1) + ' / ' + telemetryEvents.length }}</span>
+          <button type="button" (click)="showResult()">Show result</button>
+        </div>
+      }
       <app-simulator-view [scene]="simulatorScene" />
     </div>
 
