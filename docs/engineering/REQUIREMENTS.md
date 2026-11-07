@@ -3,7 +3,7 @@
 Status: planning and baseline verification. Do not interpret planned items as implemented.
 
 ## Current implementation (phase-2-ai)
-- Angular 18 dashboard with mission creation, execution summary, telemetry and top-down canvas.
+- Angular 21 dashboard with mission creation, execution summary, telemetry and top-down canvas.
 - FastAPI mission APIs, PyBullet simulation, A* navigation and waypoint execution.
 - LLM planner with deterministic fallback; metadata and optional YOLO perception paths.
 - Scenario generation, benchmarking, replay and Python regression tests.

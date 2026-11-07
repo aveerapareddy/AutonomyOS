@@ -34,3 +34,9 @@
 - Browser verified Angular 21 production assets served at `/demo/` by FastAPI, mission creation and completed PyBullet execution.
 - Actual HTTP smoke: 202 ordered events, real sampled robot states, replay, cursor reconnect and public batch blocking passed. Stopped and restarted the local server; the same mission and replay remained available and the restart smoke passed.
 - First Docker CI caught missing Python 3.12 PyBullet wheels/compiler. The image was corrected to Python 3.11 and NumPy 2.3.5. Container CI result is tracked in GitHub Actions; a prepared image is not a hosted deployment.
+
+## Container and geometry gates
+
+- CI run 42425524264 passed backend, frontend and container-demo jobs. Container smoke executed a real mission and verified persisted telemetry/replay after container restart. The CPU image includes the planner's required `httpx` import even when rule-based mode is selected.
+- Added obstacle half-extents to the backward-compatible scene contract; 2D/3D views now project the long default warehouse walls rather than drawing all obstacles as square blocks.
+- A real PyBullet AABB comparison verifies published default obstacle extents against physics bodies. The local regression suite now has 97 passing tests; production Angular build passes after the geometry change.

@@ -80,7 +80,7 @@ class OrchestratorService:
             float(world_bounds[3]),
         )
         viz_obstacles = [
-            SceneObstacle(x=float(o.x), y=float(o.y)) for o in obstacle_objects
+            SceneObstacle(x=float(o.x), y=float(o.y), half_extents=o.half_extents) for o in obstacle_objects
         ]
         perception_result = perceive_from_objects(obstacle_objects, target_object)
 

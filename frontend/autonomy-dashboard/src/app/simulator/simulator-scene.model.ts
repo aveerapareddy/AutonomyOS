@@ -19,7 +19,7 @@ export interface RobotPose {
 export interface SimulatorScene {
   mode: 'idle' | 'live';
   bounds: WorldBounds;
-  obstacles: Vec2[];
+  obstacles: (Vec2 & { halfExtents?: [number, number, number] })[];
   obstacleHalfExtent: number;
   target: Vec2 | null;
   robot: RobotPose | null;

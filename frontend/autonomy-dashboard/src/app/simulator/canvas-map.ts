@@ -126,14 +126,15 @@ function drawObstacles(
   map: ScreenMapping,
   idleMul: number,
 ): void {
-  const half = scene.obstacleHalfExtent * map.scale;
   for (const o of scene.obstacles) {
     const c = worldToScreen(map, o.x, o.y);
     ctx.fillStyle = idleMul > 0 ? 'rgba(35,39,46,0.55)' : 'rgba(35,39,46,0.92)';
     ctx.strokeStyle = idleMul > 0 ? 'rgba(61,68,80,0.5)' : '#333942';
     ctx.lineWidth = 1;
-    ctx.fillRect(c.x - half, c.y - half, half * 2, half * 2);
-    ctx.strokeRect(c.x - half + 0.5, c.y - half + 0.5, half * 2 - 1, half * 2 - 1);
+    const hx = (o.halfExtents?.[0] ?? scene.obstacleHalfExtent) * map.scale;
+    const hy = (o.halfExtents?.[1] ?? scene.obstacleHalfExtent) * map.scale;
+    ctx.fillRect(c.x - hx, c.y - hy, hx * 2, hy * 2);
+    ctx.strokeRect(c.x - hx + 0.5, c.y - hy + 0.5, hx * 2 - 1, hy * 2 - 1);
   }
 }
 

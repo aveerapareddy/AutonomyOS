@@ -23,6 +23,7 @@ export interface ExecutionStep {
 export interface SceneObstacle {
   x: number;
   y: number;
+  half_extents?: [number, number, number];
 }
 
 export interface MissionExecutionSummary {

@@ -10,6 +10,7 @@ class SceneObstacle(BaseModel):
 
     x: float
     y: float
+    half_extents: tuple[float, float, float] = (0.5, 0.5, 0.5)
 
 
 class ExecutionStep(BaseModel):

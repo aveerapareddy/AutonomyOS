@@ -60,8 +60,8 @@ _BLOCK_XY = (1.0, 1.0)
 def get_world_layout() -> Tuple[Tuple[float, float, float, float], List[WorldObject], WorldObject]:
     """Return (world_bounds, obstacle_objects, target_object) for planning. No PyBullet."""
     obstacle_objects = [
-        WorldObject(object_id="obstacle_0", object_type="wall", x=_WALL_LEFT_XY[0], y=_WALL_LEFT_XY[1]),
-        WorldObject(object_id="obstacle_1", object_type="wall", x=_WALL_RIGHT_XY[0], y=_WALL_RIGHT_XY[1]),
+        WorldObject(object_id="obstacle_0", object_type="wall", x=_WALL_LEFT_XY[0], y=_WALL_LEFT_XY[1], half_extents=(_WALL_HALF_X, _WALL_HALF_Y, _WALL_HALF_Z)),
+        WorldObject(object_id="obstacle_1", object_type="wall", x=_WALL_RIGHT_XY[0], y=_WALL_RIGHT_XY[1], half_extents=(_WALL_HALF_X, _WALL_HALF_Y, _WALL_HALF_Z)),
         WorldObject(object_id="obstacle_2", object_type="block", x=_BLOCK_XY[0], y=_BLOCK_XY[1]),
     ]
     target_object = WorldObject(object_id="target", object_type="target", x=_TARGET_XY[0], y=_TARGET_XY[1])
@@ -196,7 +196,7 @@ def _create_obstacles() -> Tuple[List[int], List[WorldObject]]:
             basePosition=(_WALL_LEFT_XY[0], _WALL_LEFT_XY[1], _WALL_HALF_Z),
         )
     )
-    objects_.append(WorldObject(object_id="obstacle_0", object_type="wall", x=_WALL_LEFT_XY[0], y=_WALL_LEFT_XY[1]))
+    objects_.append(WorldObject(object_id="obstacle_0", object_type="wall", x=_WALL_LEFT_XY[0], y=_WALL_LEFT_XY[1], half_extents=(_WALL_HALF_X, _WALL_HALF_Y, _WALL_HALF_Z)))
     ids_.append(
         pb.createMultiBody(
             0,
@@ -204,7 +204,7 @@ def _create_obstacles() -> Tuple[List[int], List[WorldObject]]:
             basePosition=(_WALL_RIGHT_XY[0], _WALL_RIGHT_XY[1], _WALL_HALF_Z),
         )
     )
-    objects_.append(WorldObject(object_id="obstacle_1", object_type="wall", x=_WALL_RIGHT_XY[0], y=_WALL_RIGHT_XY[1]))
+    objects_.append(WorldObject(object_id="obstacle_1", object_type="wall", x=_WALL_RIGHT_XY[0], y=_WALL_RIGHT_XY[1], half_extents=(_WALL_HALF_X, _WALL_HALF_Y, _WALL_HALF_Z)))
     block = pb.createCollisionShape(pb.GEOM_BOX, halfExtents=_OBSTACLE_HALF)
     ids_.append(
         pb.createMultiBody(

@@ -38,9 +38,9 @@ export class IndustrialView {
     grid.position.set(cx, 0, -cy);
     this.content.add(grid);
     for (const obstacle of scene.obstacles) {
-      const size = scene.obstacleHalfExtent * 2;
-      this.box(size, 1.2, size, obstacle.x, 0.6, -obstacle.y, 0x87949e);
-      this.box(size + 0.04, 0.08, size + 0.04, obstacle.x, 1.24, -obstacle.y, 0xe6ae38);
+      const [hx, hy, hz] = obstacle.halfExtents ?? [scene.obstacleHalfExtent, scene.obstacleHalfExtent, 0.5];
+      this.box(hx * 2, hz * 2, hy * 2, obstacle.x, hz, -obstacle.y, 0x87949e);
+      this.box(hx * 2 + 0.02, 0.02, hy * 2 + 0.02, obstacle.x, hz * 2 + 0.01, -obstacle.y, 0xe6ae38);
     }
     this.path(scene.plannedPath, 0x37b7ef, 0.06);
     this.path(scene.executedPath, 0x7adea0, 0.09);

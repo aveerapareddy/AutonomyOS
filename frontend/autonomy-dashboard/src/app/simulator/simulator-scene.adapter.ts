@@ -170,7 +170,7 @@ export function buildSimulatorScene(
   }
 
   const obstacles =
-    execution.obstacles?.map((o) => ({ x: o.x, y: o.y })) ?? [];
+    execution.obstacles?.map((o) => ({ x: o.x, y: o.y, halfExtents: o.half_extents })) ?? [];
   const apiBounds = boundsFromApi(execution);
   const target = vecFromTargetRecord(execution.detected_target ?? undefined);
   const latestPose = [...telemetry].sort((a, b) => b.sequence - a.sequence)
