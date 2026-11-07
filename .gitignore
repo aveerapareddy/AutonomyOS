@@ -39,3 +39,11 @@ camera_capture.png
 # Frontend
 frontend/autonomy-dashboard/node_modules/
 frontend/autonomy-dashboard/dist/
+
+# Local runtime state and downloaded model weights
+work/
+data/
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+*.pt

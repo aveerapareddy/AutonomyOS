@@ -87,3 +87,12 @@ def test_telemetry_events_have_monotonic_sequence() -> None:
     svc.record(mission_id, TelemetryEventType.PATH_COMPUTED, "navigation", {})
     events = svc.get_events_for_mission(mission_id)
     assert [e.sequence for e in events] == [1, 2]
+
+
+def test_telemetry_cursor_reconnect():
+    response = client.post("/missions", json={"mission_text": "Navigate to target"})
+    mission_id = response.json()["mission_id"]
+    first = client.get(f"/missions/{mission_id}/telemetry").json()
+    cursor = first["events"][-1]["sequence"]
+    assert client.get(f"/missions/{mission_id}/telemetry?after_sequence={cursor}").json()["events"] == []
+    assert client.get(f"/missions/{mission_id}/telemetry?after_sequence=-1").status_code == 422

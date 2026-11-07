@@ -35,6 +35,7 @@ class ExecutionConfig:
     waypoint_tolerance: float = WAYPOINT_TOLERANCE
     turn_threshold_rad: float = TURN_THRESHOLD_RAD
     max_steps_per_waypoint: int = MAX_STEPS_PER_WAYPOINT
+    telemetry_interval_steps: int = 24
 
 
 class WaypointExecutor:
@@ -79,6 +80,7 @@ class WaypointExecutor:
         turn_thresh = self._config.turn_threshold_rad
         max_steps = self._config.max_steps_per_waypoint
 
+        simulation_step = 0
         for idx, wp in enumerate(waypoints):
             step_count = 0
             while step_count < max_steps:
@@ -98,6 +100,7 @@ class WaypointExecutor:
                             "target_y": wp.y,
                             "robot_x": pose.x,
                             "robot_y": pose.y,
+                            "robot_theta": pose.theta,
                         },
                     )
                     break
@@ -111,6 +114,16 @@ class WaypointExecutor:
                 else:
                     self._env.step(RobotAction.TURN_RIGHT)
                 step_count += 1
+                simulation_step += 1
+                if simulation_step % max(1, self._config.telemetry_interval_steps) == 0:
+                    sampled = self._env.get_robot_pose()
+                    self._telemetry.record(
+                        self._mission_id, TelemetryEventType.ROBOT_STATE,
+                        TELEMETRY_SOURCE_EXECUTION_ENGINE,
+                        {"robot_x": sampled.x, "robot_y": sampled.y,
+                         "robot_theta": sampled.theta, "simulation_step": simulation_step,
+                         "backend": "pybullet"},
+                    )
             else:
                 pose = self._env.get_robot_pose()
                 steps.append(

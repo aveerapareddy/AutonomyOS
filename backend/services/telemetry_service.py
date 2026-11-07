@@ -6,12 +6,14 @@ from datetime import datetime, timezone
 from typing import List
 
 from backend.schemas.telemetry import TelemetryEvent, TelemetryEventType
+from backend.storage.sqlite_journal import SQLiteJournal
 
 
 class TelemetryService:
     """Records and retrieves telemetry events. In-memory store; replaceable with SQLite later."""
 
-    def __init__(self) -> None:
+    def __init__(self, journal: SQLiteJournal | None = None) -> None:
+        self._journal = journal
         self._store: dict[str, List[TelemetryEvent]] = defaultdict(list)
         self._sequence: dict[str, int] = defaultdict(int)
 
@@ -24,6 +26,8 @@ class TelemetryService:
     ) -> TelemetryEvent:
         """Append one event. Returns the recorded event."""
         event_type_str = event_type.value if isinstance(event_type, TelemetryEventType) else event_type
+        if self._journal is not None:
+            return self._journal.append(mission_id, event_type_str, source_component, payload or {})
         now = datetime.now(timezone.utc)
         self._sequence[mission_id] += 1
         seq = self._sequence[mission_id]
@@ -41,5 +45,7 @@ class TelemetryService:
 
     def get_events_for_mission(self, mission_id: str) -> List[TelemetryEvent]:
         """Return events for the mission in chronological order (by sequence, then timestamp)."""
+        if self._journal is not None:
+            return self._journal.events(mission_id)
         events = self._store.get(mission_id, [])
         return sorted(events, key=lambda e: (e.sequence, e.timestamp))
