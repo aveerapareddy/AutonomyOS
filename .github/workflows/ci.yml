@@ -34,10 +34,43 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version-file: frontend/autonomy-dashboard/.nvmrc
           cache: npm
           cache-dependency-path: frontend/autonomy-dashboard/package-lock.json
       - name: Install frontend dependencies
         run: npm ci
       - name: Build frontend
         run: npm run build
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+  demo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build CPU demo image
+        run: docker build -t autonomyos-demo .
+      - name: Start CPU demo
+        run: docker run -d --name autonomyos-demo -p 8000:8000 autonomyos-demo
+      - name: Wait for readiness
+        run: |
+          for attempt in $(seq 1 30); do
+            curl --fail --silent http://127.0.0.1:8000/health && exit 0
+            sleep 2
+          done
+          docker logs autonomyos-demo
+          exit 1
+      - name: Exercise real simulation and dashboard
+        run: python scripts/smoke_demo.py --mission-file /tmp/demo-mission.txt
+      - name: Restart and verify persisted mission replay
+        run: |
+          docker restart autonomyos-demo
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:8000/health; then break; fi
+            sleep 2
+          done
+          python scripts/smoke_demo.py --mission-file /tmp/demo-mission.txt --verify-restart
+      - name: Capture demo logs
+        if: always()
+        run: docker logs autonomyos-demo || true
