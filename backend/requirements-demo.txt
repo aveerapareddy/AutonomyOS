@@ -1,0 +1,7 @@
+# CPU metadata-perception demo; optional YOLO and GPU inference are separate environments.
+fastapi==0.162.2
+uvicorn==0.54.0
+pydantic==2.14.3
+pydantic-settings==2.16.2
+numpy==2.5.4
+pybullet==3.2.7

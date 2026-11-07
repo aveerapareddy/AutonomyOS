@@ -20,13 +20,15 @@ class MissionStatus(str, Enum):
 class MissionRequest(BaseModel):
     """Input for creating or submitting a mission."""
 
-    mission_text: str = Field(..., min_length=1)
-    world_id: Optional[str] = None
+    mission_text: str = Field(..., min_length=1, max_length=4000)
+    world_id: Optional[str] = Field(default=None, max_length=200)
 
     @field_validator("mission_text", mode="before")
     @classmethod
     def trim_and_reject_blank(cls, v: str) -> str:
-        s = (v or "").strip()
+        if not isinstance(v, str):
+            raise ValueError("mission_text must be text")
+        s = v.strip()
         if not s:
             raise ValueError("mission_text cannot be empty or blank")
         return s

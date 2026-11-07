@@ -1,6 +1,8 @@
 """FastAPI application entrypoint."""
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+from backend.core.config import get_settings
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.api.routes.benchmarks import router as benchmarks_router
@@ -8,6 +10,7 @@ from backend.api.routes.missions import router as missions_router
 from backend.api.routes.replay import router as replay_router
 from backend.api.routes.telemetry import router as telemetry_router
 from backend.core.logging import get_logger
+from backend.api.demo_guard import DemoGuard
 
 logger = get_logger(__name__)
 
@@ -17,6 +20,8 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
 )
+
+app.add_middleware(DemoGuard, public_demo=get_settings().public_demo)
 
 app.add_middleware(
     CORSMiddleware,
@@ -46,3 +51,8 @@ app.include_router(missions_router)
 app.include_router(telemetry_router)
 app.include_router(replay_router)
 app.include_router(benchmarks_router)
+
+
+# Optional same-origin production bundle; API root and health endpoints remain intact.
+if get_settings().frontend_directory:
+    app.mount("/demo", StaticFiles(directory=get_settings().frontend_directory, html=True), name="dashboard")
