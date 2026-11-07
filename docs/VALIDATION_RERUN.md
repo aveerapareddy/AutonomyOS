@@ -43,6 +43,9 @@ controller reconstruction, one real five-scenario simulation completes, and a
 second execution returns the recorded result without another tool call. The demo
 uses a separate automated-validation policy and claims no human approval.
 
+Two additional integrated-source seed-42 100-scenario runs each scored 99/100
+and reproduced exact scenario/source/outcome hashes.
+
 Combined backend validation: **135 passed**, zero skipped, one upstream Starlette
 httpx deprecation warning. Clean frontend dependency installation and the Angular
 production build also passed locally. A restart regression also verifies durable telemetry
