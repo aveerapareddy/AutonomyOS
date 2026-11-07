@@ -12,9 +12,9 @@ Status: planning and baseline verification. Do not interpret planned items as im
 
 | ID | Requirement | Verification gate | Status |
 |---|---|---|---|
-| A01 | Preserve existing mission workflows | Python regression tests and Angular production build | Not yet run in CI |
-| A02 | Interactive 3D digital twin | Browser E2E robot inspection and real simulator-state replay | Planned |
-| A03 | Real-time telemetry | Ordered events, reconnection and replay tests | Planned |
+| A01 | Preserve existing mission workflows | Python regression tests and Angular production build | Passed baseline CI; regression checks continue |
+| A02 | Interactive 3D digital twin | Browser E2E robot inspection and real simulator-state replay | Partial: 3D projection and recorded pose replay verified; original reference parity pending |
+| A03 | Real-time telemetry | Ordered events, reconnection and replay tests | Partial: durable sampled states, ordering, cursor and replay verified; live stream pending |
 | A04 | Durable agent orchestration | Workflow checkpoint/restart and tool execution tests | Planned |
 | A05 | Human approval and guardrails | Authorization and adversarial tool-call tests | Planned |
 | A06 | Distributed simulation runs | Queue, retry, idempotency, cancellation and failure tests | Planned |
@@ -32,7 +32,7 @@ Status: planning and baseline verification. Do not interpret planned items as im
 | A18 | Engineering RAG | Retrieval-grounded answers with citation and regression checks | Planned |
 | A19 | Knowledge graph | Asset, scenario and failure relationships with query tests | Planned |
 | A20 | Evaluation platform | Accuracy, reliability, latency, safety, cost and reproducibility metrics | Planned |
-| A21 | Production engineering | CI/CD, observability, security, infrastructure as code and runbooks | Planned |
+| A21 | Production engineering | CI/CD, observability, security, infrastructure as code and runbooks | Partial: regression/build CI, request tracing, demo policy and deployment package; full production gates pending |
 | A22 | Public hosted demo | HTTPS deployment and full end-to-end smoke test | Planned |
 
 ## Engineering rules

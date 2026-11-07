@@ -25,3 +25,12 @@
 - Telemetry supports `after_sequence` for reconnect/poll consumers. Replay and original event IDs survive restart.
 - Angular offers play/pause, event scrub and result controls. Replay uses recorded event order at 10 events/second; playback is not simulation-time synchronized and is not a live stream.
 - Mission/event durability does not yet imply durable orchestration checkpoints, execution resume or distributed workers.
+
+## Security and deployment preparation increment
+
+- Migrated Angular 18 → 19 → 20 → 21 using Angular migrations; production build passed at each major. Final clean install/build passed with Angular 21.2.26 and CLI 21.2.29 under Node 20.20.2/npm 10.9.10.
+- Final production npm audit: 0 findings. Full audit: 21 moderate findings in development/build tooling, 0 high/critical. These remain tracked, not suppressed.
+- Python regression suite after public-demo policy and input validation changes: 96 passed locally.
+- Browser verified Angular 21 production assets served at `/demo/` by FastAPI, mission creation and completed PyBullet execution.
+- Actual HTTP smoke: 202 ordered events, real sampled robot states, replay, cursor reconnect and public batch blocking passed. Stopped and restarted the local server; the same mission and replay remained available and the restart smoke passed.
+- First Docker CI caught missing Python 3.12 PyBullet wheels/compiler. The image was corrected to Python 3.11 and NumPy 2.3.5. Container CI result is tracked in GitHub Actions; a prepared image is not a hosted deployment.
