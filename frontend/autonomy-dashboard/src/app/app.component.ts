@@ -11,7 +11,6 @@ type HeaderRunState = 'READY' | 'RUNNING' | 'COMPLETED' | 'FAILED';
 
 @Component({
   selector: 'app-root',
-  standalone: true,
   imports: [CommonModule, FormsModule, SimulatorViewComponent],
   templateUrl: './app.component.html',
 })
