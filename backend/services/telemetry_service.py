@@ -43,3 +43,11 @@ class TelemetryService:
         """Return events for the mission in chronological order (by sequence, then timestamp)."""
         events = self._store.get(mission_id, [])
         return sorted(events, key=lambda e: (e.sequence, e.timestamp))
+
+    def export(self) -> dict[str, list[dict]]:
+        """Snapshot all local mission traces as JSON-compatible records."""
+        return {
+            mission_id: [event.model_dump(mode="json")
+                         for event in self.get_events_for_mission(mission_id)]
+            for mission_id in self._store
+        }

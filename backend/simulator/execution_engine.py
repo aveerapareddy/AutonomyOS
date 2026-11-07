@@ -75,6 +75,7 @@ class WaypointExecutor:
         )
 
         steps: List[ExecutionStep] = []
+        total_simulator_steps = 0
         tol = self._config.waypoint_tolerance
         turn_thresh = self._config.turn_threshold_rad
         max_steps = self._config.max_steps_per_waypoint
@@ -111,6 +112,7 @@ class WaypointExecutor:
                 else:
                     self._env.step(RobotAction.TURN_RIGHT)
                 step_count += 1
+                total_simulator_steps += 1
             else:
                 pose = self._env.get_robot_pose()
                 steps.append(
@@ -132,6 +134,7 @@ class WaypointExecutor:
                 return ExecutionResult(
                     execution_status="failed",
                     execution_steps=steps,
+                    simulator_steps=total_simulator_steps,
                     final_robot_position=_pose_to_dict(pose),
                     message=f"Max steps exceeded at waypoint {idx}",
                 )
@@ -151,6 +154,7 @@ class WaypointExecutor:
         return ExecutionResult(
             execution_status="completed",
             execution_steps=steps,
+            simulator_steps=total_simulator_steps,
             final_robot_position=_pose_to_dict(pose),
         )
 

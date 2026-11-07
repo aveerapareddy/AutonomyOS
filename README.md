@@ -1,5 +1,19 @@
 # AutonomyOS
 
+## AutonomyOS 2.0 increment
+
+The CPU experiment control plane adds durable workflow history, real seeded
+simulation runs, completion evaluations, source/input/outcome fingerprints and
+reproduction comparisons. Optional OpenUSD geometry export is round-trip tested.
+PyTorch/Hugging Face Nemotron inference and an Isaac Sim stage/physics smoke test
+were observed on a rented RTX GPU. NIM and Cosmos remain unverified. The first
+GPU run's raw archive was lost after a failed download and timed shutdown; its
+Isaac result screenshot is preserved. See the demo guide for exact evidence limits.
+No production or physical-safety claim is made.
+
+Start with [the phased audit and gap matrix](docs/AUTONOMYOS_2.md) and
+[the reproducible demo](docs/DEMO.md).
+
 ## Project Overview
 
 AutonomyOS is an experimental robotics autonomy platform. The goal is to explore how modern AI systems can integrate with robotics simulation: natural language mission input, perception, autonomous navigation, and evaluation of behavior in reproducible scenarios.
@@ -24,7 +38,7 @@ The repository currently provides:
 - **Perception foundation with typed detection contracts** — `DetectedObject`, `PerceptionRequest`, `PerceptionResult`; same contract for a future YOLO-backed implementation.
 - **Rule-based target and obstacle detection** from simulator metadata; confidence defaults in `core.constants`.
 - **Object typing support** (target, wall, block) via `WorldObject` descriptor; `obstacle_objects` and `target_object` on `BuiltWorld` to avoid parallel-list drift.
-- **Telemetry and mission event logging** — Event-driven telemetry with stable event types (e.g. mission_received, plan_generated, path_computed); in-memory store; GET `/missions/{mission_id}/telemetry` returns ordered event timeline. Mission creation emits `mission_received`. Telemetry is the foundation for mission replay and benchmarking; replay and benchmark runs are not implemented yet.
+- **Telemetry and mission event logging** — Event-driven telemetry with stable event types (e.g. mission_received, plan_generated, path_computed); in-memory store; GET `/missions/{mission_id}/telemetry` returns ordered event timeline. Mission creation emits `mission_received`. Telemetry supports the implemented event replay and benchmark workflows.
 - **Event-driven telemetry foundation** — Per-mission monotonic sequence and timestamp; stable event types and source-component constants for replay and trace filtering.
 - **Mission timeline retrieval API** — GET `/missions/{mission_id}/telemetry` returns events in order (sequence, then timestamp).
 - **Replay-ready event contracts** — TelemetryEvent (event_id, mission_id, sequence, timestamp, event_type, source_component, payload) and TelemetryEventType enum.
@@ -162,7 +176,7 @@ Done.
 python -m pytest backend/tests/ -v
 ```
 
-Mission API tests always run; simulator tests are skipped if PyBullet is not installed. Telemetry is in-memory and replaceable with SQLite later; it is the foundation for mission replay and benchmarking (replay and benchmark runs not implemented).
+Mission API tests always run; simulator tests are skipped if PyBullet is not installed. Mission telemetry remains in-memory; replay and benchmark runs are implemented. The 2.0 experiment ledger persists workflow state and exports mission traces to disk.
 
 ## Known Limitations
 

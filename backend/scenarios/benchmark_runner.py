@@ -118,6 +118,7 @@ def run_benchmark(
                 waypoint_count=waypoint_count,
                 path_length_raw=path_length_raw,
                 execution_steps=execution_steps,
+                simulator_steps=summary.simulator_steps,
                 message=summary.message,
             )
         )

@@ -18,6 +18,7 @@ class ExecutionResult(BaseModel):
     """Result of running WaypointExecutor. execution_status: \"completed\" | \"failed\"."""
 
     execution_status: str
+    simulator_steps: int = 0
     execution_steps: list[ExecutionStep] = Field(default_factory=list)
     final_robot_position: Optional[dict[str, float]] = None
     message: Optional[str] = None
@@ -35,6 +36,7 @@ class MissionExecutionSummary(BaseModel):
     path_length_raw: Optional[int] = None
     telemetry_count: int = 0
     message: Optional[str] = None
+    simulator_steps: int = 0
     execution_steps: list[ExecutionStep] = Field(default_factory=list)
     final_robot_position: Optional[dict[str, float]] = None
     execution_status: Optional[str] = None

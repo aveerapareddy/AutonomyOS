@@ -25,6 +25,7 @@ def test_waypoint_executor_reaches_target() -> None:
         ]
         result = executor.execute(waypoints)
         assert result.execution_status == "completed"
+        assert result.simulator_steps > 3
         assert len(result.execution_steps) == 3
         assert all(s.reached for s in result.execution_steps)
         assert result.final_robot_position is not None
@@ -60,6 +61,7 @@ def test_waypoint_executor_failure_max_steps() -> None:
         executor = WaypointExecutor(env, "m3", telemetry, config=config)
         waypoints = [Waypoint(x=10.0, y=10.0)]
         result = executor.execute(waypoints)
+        assert result.simulator_steps == 2
         assert result.execution_status == "failed"
         assert result.message is not None
         assert "max steps" in result.message.lower() or "exceeded" in result.message.lower()

@@ -79,3 +79,9 @@ def test_reachable_path_deterministic_world() -> None:
     last = result.waypoints[-1]
     assert last.x == pytest.approx(5.0, abs=0.5)
     assert last.y == pytest.approx(3.0, abs=0.5)
+
+
+def test_same_blocked_cell_is_not_a_valid_path():
+    grid = build_occupancy_grid((0.0, 3.0, 0.0, 3.0), [(1.5, 1.5)])
+    result = plan_path(grid, 1.5, 1.5, 1.5, 1.5)
+    assert not result.path_found

@@ -1,0 +1,2 @@
+# Optional CPU OpenUSD geometry interchange, independently validated.
+usd-core==26.11

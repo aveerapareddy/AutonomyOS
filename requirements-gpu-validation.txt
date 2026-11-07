@@ -1,0 +1,5 @@
+# PyTorch comes from the official GPU container; isolate Isaac's separate dependency set.
+transformers==4.57.6
+huggingface-hub==0.36.2
+safetensors==0.8.0
+accelerate>=1,<2

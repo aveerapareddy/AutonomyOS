@@ -25,6 +25,7 @@ class ScenarioBenchmarkResult(BaseModel):
     waypoint_count: int = 0
     path_length_raw: Optional[int] = None
     execution_steps: int = 0
+    simulator_steps: int = 0
     message: Optional[str] = None
 
 

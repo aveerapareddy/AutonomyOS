@@ -188,6 +188,7 @@ class OrchestratorService:
                 telemetry_count=len(events),
                 message=execution_result.message,
                 execution_steps=execution_result.execution_steps,
+                simulator_steps=execution_result.simulator_steps,
                 final_robot_position=execution_result.final_robot_position,
                 execution_status=execution_result.execution_status,
             )
@@ -210,6 +211,7 @@ class OrchestratorService:
             path_length_raw=path_length_raw,
             telemetry_count=len(events),
             execution_steps=execution_result.execution_steps,
+            simulator_steps=execution_result.simulator_steps,
             final_robot_position=execution_result.final_robot_position,
             execution_status=execution_result.execution_status,
         )
@@ -226,6 +228,7 @@ class OrchestratorService:
         telemetry_count: Optional[int] = None,
         message: Optional[str] = None,
         execution_steps: Optional[list] = None,
+        simulator_steps: int = 0,
         final_robot_position: Optional[dict] = None,
         execution_status: Optional[str] = None,
     ) -> MissionExecutionSummary:
@@ -242,6 +245,7 @@ class OrchestratorService:
             telemetry_count=telemetry_count,
             message=message,
             execution_steps=execution_steps or [],
+            simulator_steps=simulator_steps,
             final_robot_position=final_robot_position,
             execution_status=execution_status,
         )
