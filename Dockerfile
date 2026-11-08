@@ -5,13 +5,22 @@ RUN npm ci
 COPY frontend/autonomy-dashboard/ ./
 RUN npm run build -- --base-href /demo/
 
+FROM python:3.11-slim-bookworm AS wheels
+ARG TARGETARCH
+WORKDIR /build
+COPY backend/requirements-demo.txt ./requirements-demo.txt
+RUN if [ "$TARGETARCH" = "arm64" ]; then apt-get update && apt-get install -y --no-install-recommends g++; fi \
+    && pip wheel --no-cache-dir --wheel-dir=/wheels -r requirements-demo.txt
+
 FROM python:3.11-slim-bookworm
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 \
     AUTONOMY_PLANNER_MODE=rule_based AUTONOMY_DATABASE_PATH=/data/autonomy.sqlite3 \
     AUTONOMY_FRONTEND_DIRECTORY=/app/dashboard AUTONOMY_PUBLIC_DEMO=true
 WORKDIR /app
 COPY backend/requirements-demo.txt ./requirements-demo.txt
-RUN pip install --no-cache-dir -r requirements-demo.txt \
+COPY --from=wheels /wheels /wheels
+RUN pip install --no-cache-dir --no-index --find-links=/wheels -r requirements-demo.txt \
+    && rm -rf /wheels \
     && useradd --uid 10001 --create-home autonomy \
     && mkdir /data && chown autonomy:autonomy /data
 COPY backend/ ./backend/

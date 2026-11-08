@@ -18,6 +18,8 @@ type HeaderRunState = 'READY' | 'RUNNING' | 'COMPLETED' | 'FAILED';
 })
 export class AppComponent implements OnDestroy {
   private readonly api = inject(MissionApiService);
+  publicDemo=false;
+  constructor(){this.api.capabilities().subscribe({next:state=>this.publicDemo=state.public_demo,error:()=>{}});}
 
   replayIndex = -1;
   replayPlaying = false;

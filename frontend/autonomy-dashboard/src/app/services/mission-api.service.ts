@@ -13,6 +13,8 @@ export class MissionApiService {
   private readonly http = inject(HttpClient);
   private readonly base = environment.apiUrl.replace(/\/$/, '');
 
+  capabilities():Observable<{public_demo:boolean}> {return this.http.get<{public_demo:boolean}>(`${this.base}/capabilities`);}
+
   createMission(missionText: string, worldId?: string): Observable<MissionResponse> {
     const body: { mission_text: string; world_id?: string } = {
       mission_text: missionText,

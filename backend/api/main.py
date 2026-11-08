@@ -45,6 +45,14 @@ def root() -> dict[str, str]:
     return {"service": "AutonomyOS", "status": "running"}
 
 
+@app.get("/capabilities")
+def capabilities():
+    settings=get_settings()
+    return {"public_demo":settings.public_demo,"operator_workspace":not settings.public_demo and bool(settings.workflow_directory),
+            "operations_workspace":not settings.public_demo and bool(settings.operations_directory),
+            "telemetry":"server-sent events with cursor replay","simulator":"kinematic PyBullet"}
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     """Liveness/readiness probe."""

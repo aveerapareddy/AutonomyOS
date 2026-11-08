@@ -43,3 +43,17 @@ def test_public_demo_blocks_all_operator_workflow_paths():
     client=demo_client()
     for path in ['/workflows','/workflows/import','/workflows/example/approve']:
         assert client.post(path).status_code==403
+
+
+def test_capability_response_has_no_credentials(monkeypatch):
+    from backend.core.config import get_settings
+    from backend.api.main import app
+    monkeypatch.setenv('AUTONOMY_PUBLIC_DEMO','true')
+    monkeypatch.setenv('AUTONOMY_OPERATOR_TOKEN','do-not-expose-this-server-secret')
+    get_settings.cache_clear()
+    try:
+        response=TestClient(app).get('/capabilities')
+        assert response.json()['public_demo']
+        assert not response.json()['operator_workspace']
+        assert 'do-not-expose' not in response.text
+    finally:get_settings.cache_clear()

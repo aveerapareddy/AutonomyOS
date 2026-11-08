@@ -148,3 +148,14 @@ def test_two_workers_execute_distinct_jobs_in_isolated_processes(tmp_path):
     with ThreadPoolExecutor(max_workers=2) as pool:list(pool.map(lambda _:JobStore(tmp_path).run_one(),range(2)))
     assert all(store.get(ident)['status']=='completed' for ident in ids)
     assert len({store.get(ident)['result']['report']['run_id'] for ident in ids})==2
+
+
+def test_api_does_not_implicitly_enable_semantic_inference(tmp_path,monkeypatch):
+    monkeypatch.setenv('AUTONOMY_OPERATOR_TOKEN','local-test-read-token-with-24-characters')
+    monkeypatch.setenv('AUTONOMY_PUBLIC_DEMO','false')
+    monkeypatch.setenv('AUTONOMY_SEMANTIC_PYTHON','')
+    get_settings.cache_clear()
+    try:
+        response=TestClient(app).post('/operations/knowledge',headers={'Authorization':'Bearer local-test-read-token-with-24-characters'},json={'question':'How does the controller work?','method':'semantic'})
+        assert response.status_code==503
+    finally:get_settings.cache_clear()
