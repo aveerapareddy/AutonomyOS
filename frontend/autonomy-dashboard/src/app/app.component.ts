@@ -97,6 +97,7 @@ export class AppComponent implements OnDestroy {
     this.refreshSimulatorScene();
   }
 
+  activePanel = 'mission';
   missionText = '';
   currentMissionId: string | null = null;
   runState: HeaderRunState = 'READY';
@@ -189,6 +190,7 @@ export class AppComponent implements OnDestroy {
   }
 
   showSiteResult(result:any):void {
+    this.activePanel='mission';
     this.stopLive();this.stopReplay();this.replayIndex=-1;
     this.currentMissionId=null;this.runState=result.summary.status==='completed'?'COMPLETED':'FAILED';
     this.telemetryEvents=result.telemetry;this.telemetryConnection='Saved isolated site execution';

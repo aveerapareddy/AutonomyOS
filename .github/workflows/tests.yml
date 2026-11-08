@@ -8,7 +8,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: pip install -r backend/requirements.txt -r requirements-usd.txt
+      - run: pip install -r backend/requirements-demo.txt -r requirements-usd.txt pytest
       - run: python -c "import pybullet; from pxr import Usd"
       - run: python -m pytest backend/tests -q
       - run: python -m scripts.run_experiment --output artifacts/a --count 10 --seed 42

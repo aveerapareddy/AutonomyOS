@@ -32,7 +32,12 @@
     </div>
   </header>
 
-  <main
+  <nav class="max-w-[1680px] mx-auto px-6 pt-5 flex flex-wrap gap-3" aria-label="Control room sections">
+    <button type="button" (click)="activePanel='mission'" [attr.aria-pressed]="activePanel==='mission'" [class.text-amber-300]="activePanel==='mission'" class="border border-shell-border px-4 py-2 text-sm">Mission room</button>
+    <button type="button" (click)="activePanel='workbench'" [attr.aria-pressed]="activePanel==='workbench'" [class.text-amber-300]="activePanel==='workbench'" class="border border-shell-border px-4 py-2 text-sm">Experiments & knowledge</button>
+    <button type="button" (click)="activePanel='review'" [attr.aria-pressed]="activePanel==='review'" [class.text-amber-300]="activePanel==='review'" class="border border-shell-border px-4 py-2 text-sm">Proposal reviews</button>
+  </nav>
+  <main [style.display]="activePanel==='mission' ? null : 'none'"
     class="max-w-[1680px] mx-auto px-6 py-6 grid grid-cols-1 gap-4 pb-10 lg:grid-cols-2 lg:grid-rows-[auto_auto] lg:gap-x-5"
   >
     <div class="flex flex-col gap-4 lg:col-start-1 lg:row-start-1">
@@ -225,5 +230,5 @@
       }
     </section>
   </main>
-  <div class="max-w-[1680px] mx-auto px-6 pb-8"><p class="text-xs text-shell-muted">Telemetry: {{telemetryConnection}} · {{telemetryEvents.length}} recorded events</p><app-workflows /><app-operations (sceneResult)="showSiteResult($event)" /></div>
+  <div class="max-w-[1680px] mx-auto px-6 pb-8"><p class="text-xs text-shell-muted">Telemetry: {{telemetryConnection}} · {{telemetryEvents.length}} recorded events</p>@if(activePanel==='review'){<app-workflows />}@if(activePanel==='workbench'){<app-operations (sceneResult)="showSiteResult($event)" />}</div>
 </div>
