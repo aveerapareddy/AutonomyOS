@@ -20,6 +20,7 @@ from backend.services.navigation_constraints import grid_inflation_cells
 from backend.services.planner_service import PlannerService
 from backend.services.target_selection import select_navigation_goal
 from backend.services.telemetry_service import TelemetryService
+from backend.simulator.execution_engine import ExecutionConfig
 from backend.simulator.grid_map import build_occupancy_grid
 from backend.simulator.world_builder import WorldLayoutSpec, get_world_layout
 
@@ -39,12 +40,14 @@ class OrchestratorService:
         robot_start_provider: Optional[Callable[[], Tuple[float, float, float]]] = None,
         execution_world_layout_provider: Optional[Callable[[], WorldLayoutSpec]] = None,
         planner_service: Optional[PlannerService] = None,
+        execution_config: Optional[ExecutionConfig] = None,
     ) -> None:
         self._mission_service = mission_service
         self._telemetry_service = telemetry_service
         self._get_layout = world_layout_provider or get_world_layout
         self._get_robot_start = robot_start_provider
         self._get_execution_world_layout = execution_world_layout_provider
+        self._execution_config = execution_config
         self._planner = planner_service or PlannerService()
 
     def execute(self, mission_id: str) -> Optional[MissionExecutionSummary]:
@@ -210,6 +213,7 @@ class OrchestratorService:
                 self._telemetry_service,
                 robot_start=robot_start,
                 world_layout=execution_world_layout,
+                **({"execution_config": self._execution_config} if self._execution_config is not None else {}),
             )
         except (RuntimeError, ImportError) as e:
             self._telemetry_service.record(

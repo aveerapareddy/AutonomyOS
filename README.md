@@ -17,6 +17,10 @@ No production or physical-safety claim is made.
 Start with [the phased audit and gap matrix](docs/AUTONOMYOS_2.md) and
 [the reproducible demo](docs/DEMO.md).
 
+Versioned engineering-source retrieval and a bounded, split-seed controller-budget
+study are now available. See [knowledge and tuning](docs/KNOWLEDGE_AND_TUNING.md)
+for commands, measured results and limitations.
+
 ## Project Overview
 
 AutonomyOS is an experimental robotics autonomy platform. The goal is to explore how modern AI systems can integrate with robotics simulation: natural language mission input, perception, autonomous navigation, and evaluation of behavior in reproducible scenarios.

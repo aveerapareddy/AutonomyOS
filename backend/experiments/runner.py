@@ -45,6 +45,8 @@ def provenance():
             source[str(path.relative_to(ROOT))] = hashlib.sha256(path.read_bytes()).hexdigest()
     for path in sorted((ROOT / "evaluation").glob("*.json")):
         source[str(path.relative_to(ROOT))] = hashlib.sha256(path.read_bytes()).hexdigest()
+    for path in sorted((ROOT / "knowledge").glob("*.json")):
+        source[str(path.relative_to(ROOT))] = hashlib.sha256(path.read_bytes()).hexdigest()
     return {"revision": revision, "dirty": dirty, "source_hash": digest(source),
             "python": platform.python_version(), "platform": platform.platform(),
             "dependencies": {d.metadata["Name"]: d.version for d in importlib.metadata.distributions()},

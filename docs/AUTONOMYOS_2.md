@@ -137,3 +137,14 @@ orchestration remain incomplete. The first run lost its raw archive; the second 
 Next planned increment is versioned engineering retrieval and held-out parameter
 search. Approval/authentication, distributed scheduling and production deployment
 remain separate gates. A resume cannot yet claim the full planned scope.
+
+## Phase 3 delivered slice
+
+Versioned first-party engineering retrieval now has exact hash-checked citations
+and a transparent eight-query evaluation (recall@3 and MRR both 1.0 on each small
+four-query split). This is lexical extractive retrieval, not full generative RAG.
+A bounded three-budget study uses separate seeds for training, validation and held
+out; selection is persisted before held-out evaluation. It selected the existing
+8,000-step baseline and achieved 28/30 held-out completions with zero paired change.
+No tuning improvement is claimed. See KNOWLEDGE_AND_TUNING.md for the fixed protocol,
+all results and the remaining gaps. Resume preparation remains deferred.

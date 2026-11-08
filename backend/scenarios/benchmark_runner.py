@@ -10,6 +10,7 @@ from backend.scenarios.scenario_config import ScenarioConfig
 from backend.services.mission_service import MissionService
 from backend.services.orchestrator_service import OrchestratorService
 from backend.services.telemetry_service import TelemetryService
+from backend.simulator.execution_engine import ExecutionConfig
 from backend.simulator.world_builder import WorldLayoutSpec
 
 # Backlog: single scenario adapter so planning layout and WorldLayoutSpec share one conversion.
@@ -61,6 +62,7 @@ def run_benchmark(
     telemetry_service: TelemetryService,
     benchmark_id: str,
     benchmark_name: str,
+    execution_config: ExecutionConfig | None = None,
 ) -> BenchmarkSummary:
     """Run full pipeline for each scenario; return aggregate and per-scenario results."""
     results: List[ScenarioBenchmarkResult] = []
@@ -84,6 +86,7 @@ def run_benchmark(
             world_layout_provider=layout_provider,
             robot_start_provider=get_robot_start,
             execution_world_layout_provider=get_execution_world_layout,
+            execution_config=execution_config,
         )
         summary = orchestrator.execute(mission_resp.mission_id)
 
