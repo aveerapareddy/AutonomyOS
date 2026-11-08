@@ -43,10 +43,11 @@
         <h2 class="text-[10px] tracking-[0.2em] uppercase text-shell-muted mb-4">
           Mission Control
         </h2>
-        <label class="block text-[11px] text-shell-muted mb-2 uppercase tracking-wide"
+        <label for="mission-directive" class="block text-[11px] text-shell-muted mb-2 uppercase tracking-wide"
           >Mission directive</label
         >
         <textarea
+          id="mission-directive"
           [(ngModel)]="missionText"
           rows="4"
           class="w-full bg-shell-raised border border-shell-border px-3 py-2 text-sm text-[#E8EAED] placeholder:text-shell-muted/60 focus:outline-none focus:border-[#3D4450] resize-y min-h-[96px]"
@@ -56,6 +57,7 @@
           <button
             type="button"
             (click)="createMission()"
+            [disabled]="runState === 'RUNNING'"
             class="px-4 py-2 text-[11px] tracking-[0.12em] uppercase border border-shell-border bg-shell-raised hover:bg-[#1E2228] transition-colors"
           >
             Create mission
@@ -63,6 +65,7 @@
           <button
             type="button"
             (click)="executeMission()"
+            [disabled]="runState === 'RUNNING' || !currentMissionId"
             class="px-4 py-2 text-[11px] tracking-[0.12em] uppercase border border-[#3D4450] bg-[#171A1F] hover:bg-[#1E2228] transition-colors"
           >
             Execute mission
@@ -131,15 +134,15 @@
     </div>
 
     <div
-      class="lg:col-start-2 lg:row-start-1 lg:sticky lg:self-start lg:top-6 min-h-0"
+      class="lg:col-start-2 lg:row-start-1 lg:self-start min-h-0"
     >
       @if (telemetryEvents.length && execution) {
         <div class="flex flex-wrap items-center gap-3 p-3 border border-shell-border text-xs text-shell-muted" aria-label="Recorded replay controls">
-          <button type="button" (click)="playReplay()">{{ replayPlaying ? 'Pause replay' : 'Play recorded replay' }}</button>
+          <button type="button" (click)="playReplay()" [disabled]="runState === 'RUNNING'">{{ replayPlaying ? 'Pause replay' : 'Play recorded replay' }}</button>
           <label for="replay-frame">Recorded event</label>
           <input id="replay-frame" type="range" min="0" [max]="telemetryEvents.length - 1"
             [ngModel]="replayIndex < 0 ? telemetryEvents.length - 1 : replayIndex" (ngModelChange)="seekReplay($event)" />
-          <span>{{ replayIndex < 0 ? 'Execution result' : 'Recorded event ' + (replayIndex + 1) + ' / ' + telemetryEvents.length }}</span>
+          <span>{{ replaySeconds | number:'1.1-1' }} s simulation · {{ replayIndex < 0 ? 'Execution result' : 'Recorded event ' + (replayIndex + 1) + ' / ' + telemetryEvents.length }}</span>
           <button type="button" (click)="showResult()">Show result</button>
         </div>
       }
@@ -222,4 +225,5 @@
       }
     </section>
   </main>
+  <div class="max-w-[1680px] mx-auto px-6 pb-8"><p class="text-xs text-shell-muted">Telemetry: {{telemetryConnection}} · {{telemetryEvents.length}} recorded events</p><app-workflows /></div>
 </div>

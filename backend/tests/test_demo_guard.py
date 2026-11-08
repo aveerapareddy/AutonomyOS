@@ -37,3 +37,9 @@ def test_public_demo_creation_quota_and_trace_headers():
     response = client.post('/missions')
     assert response.status_code == 429
     assert response.headers['Retry-After'] == '60'
+
+
+def test_public_demo_blocks_all_operator_workflow_paths():
+    client=demo_client()
+    for path in ['/workflows','/workflows/import','/workflows/example/approve']:
+        assert client.post(path).status_code==403

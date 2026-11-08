@@ -5,6 +5,7 @@ from fastapi.staticfiles import StaticFiles
 from backend.core.config import get_settings
 from fastapi.middleware.cors import CORSMiddleware
 
+from backend.api.routes.workflows import router as workflows_router
 from backend.api.routes.benchmarks import router as benchmarks_router
 from backend.api.routes.missions import router as missions_router
 from backend.api.routes.replay import router as replay_router
@@ -47,6 +48,7 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+app.include_router(workflows_router)
 app.include_router(missions_router)
 app.include_router(telemetry_router)
 app.include_router(replay_router)

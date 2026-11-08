@@ -195,7 +195,7 @@ class AgentWorkflow:
             if expected_digest != row['digest']:
                 raise WorkflowError('Approval does not match the exact proposal and policy')
             approval = {'actor':actor.strip(), 'kind':review_kind, 'digest':expected_digest, 'time':time.time(),
-                        'authentication':'trusted local CLI; no remote identity attestation'}
+                        'authentication':'trusted local operator; shared API token or CLI, no individual identity attestation'}
             db.execute("UPDATE proposals SET status='approved',approval=? WHERE id=?",
                        (json.dumps(approval), workflow_id))
             self._event(db, workflow_id, 'proposal_approved', approval)

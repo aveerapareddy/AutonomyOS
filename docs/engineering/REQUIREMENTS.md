@@ -1,6 +1,8 @@
 # AutonomyOS 2.0 — Requirements Traceability
 
-Status: planning and baseline verification. Do not interpret planned items as implemented.
+Status: incrementally implemented. See ../OPERATOR_DASHBOARD.md, ../VALIDATION_RERUN.md
+and ../KNOWLEDGE_AND_TUNING.md for current integrated evidence; older baseline notes
+are historical. Do not interpret planned items as implemented.
 
 ## Current implementation (phase-2-ai)
 - Angular 21 dashboard with mission creation, execution summary, telemetry and top-down canvas.
@@ -14,9 +16,9 @@ Status: planning and baseline verification. Do not interpret planned items as im
 |---|---|---|---|
 | A01 | Preserve existing mission workflows | Python regression tests and Angular production build | Passed baseline CI; regression checks continue |
 | A02 | Interactive 3D digital twin | Browser E2E robot inspection and real simulator-state replay | Partial: 3D projection and recorded pose replay verified; original reference parity pending |
-| A03 | Real-time telemetry | Ordered events, reconnection and replay tests | Partial: durable sampled states, ordering, cursor and replay verified; live stream pending |
-| A04 | Durable agent orchestration | Workflow checkpoint/restart and tool execution tests | Planned |
-| A05 | Human approval and guardrails | Authorization and adversarial tool-call tests | Planned |
+| A03 | Real-time telemetry | Ordered events, reconnection and replay tests | Partial: incremental in-flight HTTP polling, geometry/pose telemetry, cursor reconnect and simulation-clock replay; SSE/WebSocket pending |
+| A04 | Durable agent orchestration | Workflow checkpoint/restart and tool execution tests | Bounded single-tool workflow, restart, caching and API tests passed; distributed recovery pending |
+| A05 | Human approval and guardrails | Authorization and adversarial tool-call tests | Exact-digest review, negative gates and operator token tested; individual identity/RBAC pending |
 | A06 | Distributed simulation runs | Queue, retry, idempotency, cancellation and failure tests | Planned |
 | A07 | Map-to-simulation | Map import with validated geometry and reproducible output | Planned |
 | A08 | Site-to-simulation | Asset and site data mapped to scene entities | Planned |

@@ -1,3 +1,4 @@
+import { WorkflowsComponent } from './workflows/workflows.component';
 import { CommonModule } from '@angular/common';
 import { Component, inject, OnDestroy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -11,7 +12,7 @@ type HeaderRunState = 'READY' | 'RUNNING' | 'COMPLETED' | 'FAILED';
 
 @Component({
   selector: 'app-root',
-  imports: [CommonModule, FormsModule, SimulatorViewComponent],
+  imports: [CommonModule, FormsModule, SimulatorViewComponent, WorkflowsComponent],
   templateUrl: './app.component.html',
 })
 export class AppComponent implements OnDestroy {
@@ -21,7 +22,33 @@ export class AppComponent implements OnDestroy {
   replayPlaying = false;
   private replayTimer?: ReturnType<typeof setInterval>;
 
-  ngOnDestroy(): void { this.stopReplay(); }
+  private liveTimer?: ReturnType<typeof setInterval>;
+  private polling = false;
+  private runCursor = 0;
+  telemetryConnection = 'Idle';
+  ngOnDestroy(): void { this.stopReplay(); this.stopLive(); }
+
+  private stopLive(): void {
+    if(this.liveTimer) clearInterval(this.liveTimer);
+    this.liveTimer=undefined;
+  }
+
+  private pollLive(): void {
+    if(this.polling || !this.currentMissionId)return;
+    this.polling=true; const id=this.currentMissionId;
+    const cursor=this.telemetryEvents.at(-1)?.sequence ?? this.runCursor;
+    this.api.getTelemetry(id,cursor).subscribe({
+      next:res=>{
+        this.polling=false; if(id!==this.currentMissionId)return;
+        const events=new Map(this.telemetryEvents.map(e=>[e.sequence,e]));
+        for(const event of res.events)events.set(event.sequence,event);
+        this.telemetryEvents=[...events.values()].sort((a,b)=>a.sequence-b.sequence);
+        this.telemetryConnection='Connected · incremental polling';
+        this.refreshSimulatorScene();
+      },
+      error:()=>{this.polling=false;this.telemetryConnection='Reconnecting from last event…';},
+    });
+  }
 
   stopReplay(): void {
     if (this.replayTimer) clearInterval(this.replayTimer);
@@ -41,12 +68,24 @@ export class AppComponent implements OnDestroy {
     if (this.replayIndex < 0 || this.replayIndex >= this.telemetryEvents.length - 1) this.replayIndex = 0;
     this.replayPlaying = true;
     this.refreshSimulatorScene();
-    // Recorded-event playback at 10 events/s, not wall-clock live simulation.
-    this.replayTimer = setInterval(() => {
-      if (this.replayIndex >= this.telemetryEvents.length - 1) { this.stopReplay(); return; }
-      this.replayIndex++;
-      this.refreshSimulatorScene();
-    }, 100);
+    this.scheduleReplay();
+  }
+
+  get replaySeconds():number {
+    const events=this.replayIndex<0?this.telemetryEvents:this.telemetryEvents.slice(0,this.replayIndex+1);
+    const last=[...events].reverse().find(e=>typeof e.payload['simulation_time_seconds']==='number');
+    return Number(last?.payload['simulation_time_seconds'] ?? 0);
+  }
+
+  private scheduleReplay():void {
+    if(this.replayIndex>=this.telemetryEvents.length-1){this.stopReplay();return;}
+    const current=this.replaySeconds;
+    const next=this.telemetryEvents[this.replayIndex+1];
+    const nextTime=Number(next.payload['simulation_time_seconds'] ?? current);
+    const delay=Math.max(0,(nextTime-current)*1000);
+    this.replayTimer=setTimeout(()=>{
+      this.replayIndex++;this.refreshSimulatorScene();this.scheduleReplay();
+    },delay);
   }
 
   showResult(): void {
@@ -78,6 +117,8 @@ export class AppComponent implements OnDestroy {
   }
 
   createMission(): void {
+    if(this.runState==='RUNNING')return;
+    this.stopLive();
     this.showResult();
     this.apiError = null;
     const text = this.missionText.trim();
@@ -101,6 +142,7 @@ export class AppComponent implements OnDestroy {
   }
 
   executeMission(): void {
+    if(this.runState==='RUNNING')return;
     this.showResult();
     this.apiError = null;
     if (!this.currentMissionId) {
@@ -108,8 +150,14 @@ export class AppComponent implements OnDestroy {
       return;
     }
     this.runState = 'RUNNING';
+    this.runCursor=this.telemetryEvents.at(-1)?.sequence ?? 0;
+    this.execution=null; this.telemetryEvents=[];
+    this.telemetryConnection='Connecting…';
+    this.pollLive();
+    this.liveTimer=setInterval(()=>this.pollLive(),250);
     this.api.executeMission(this.currentMissionId).subscribe({
         next: (summary) => {
+          this.stopLive();
           this.applyExecution(summary);
           this.runState =
             summary.status === 'completed'
@@ -120,6 +168,7 @@ export class AppComponent implements OnDestroy {
           this.loadTelemetry();
         },
         error: (e) => {
+          this.stopLive();
           this.runState = 'FAILED';
           this.apiError =
             typeof e?.error?.detail === 'string'
@@ -148,7 +197,7 @@ export class AppComponent implements OnDestroy {
     }
     this.api.getTelemetry(this.currentMissionId).subscribe({
       next: (res) => {
-        this.telemetryEvents = res.events;
+        this.telemetryEvents = res.events.filter(e=>e.sequence>this.runCursor);
         this.refreshSimulatorScene();
       },
       error: () => {
@@ -160,7 +209,7 @@ export class AppComponent implements OnDestroy {
 
   private refreshSimulatorScene(): void {
     const events = this.replayIndex < 0 ? this.telemetryEvents : this.telemetryEvents.slice(0, this.replayIndex + 1);
-    this.simulatorScene = buildSimulatorScene(this.execution, events, this.replayIndex >= 0);
+    this.simulatorScene = buildSimulatorScene(this.execution, events, this.replayIndex >= 0 || this.runState === 'RUNNING');
   }
 
   formatVal(v: string | number | boolean | null | undefined): string {

@@ -30,9 +30,9 @@ export class MissionApiService {
     );
   }
 
-  getTelemetry(missionId: string): Observable<TelemetryQueryResponse> {
+  getTelemetry(missionId: string, afterSequence = 0): Observable<TelemetryQueryResponse> {
     return this.http.get<TelemetryQueryResponse>(
-      `${this.base}/missions/${encodeURIComponent(missionId)}/telemetry`,
+      `${this.base}/missions/${encodeURIComponent(missionId)}/telemetry?after_sequence=${afterSequence}`,
     );
   }
 }

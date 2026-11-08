@@ -7,7 +7,7 @@ ROOT=Path(__file__).resolve().parents[2]
 
 
 def test_versioned_citations_match_exact_source():
-    index=EngineeringIndex(ROOT,ROOT/'knowledge/engineering-v1.json')
+    index=EngineeringIndex(ROOT,ROOT/'knowledge/engineering-v2.json')
     hit=index.search('concurrent SQLite sequence allocation')[0]
     assert hit['document_id']=='journal'
     source=ROOT/hit['citation']['path']
@@ -26,14 +26,14 @@ def test_stale_source_rejected(tmp_path):
 
 
 def test_unanswerable_query_does_not_invent_citation():
-    index=EngineeringIndex(ROOT,ROOT/'knowledge/engineering-v1.json')
+    index=EngineeringIndex(ROOT,ROOT/'knowledge/engineering-v2.json')
     assert index.search('zzzzqwertyuiop')==[]
     with pytest.raises(ValueError): index.search('x',11)
     with pytest.raises(ValueError): evaluate(index,[{'id':'bad','query':'x','relevant':['unknown']}])
 
 
 def test_citation_tamper_and_path_escape_rejected(tmp_path):
-    corpus=json.loads((ROOT/'knowledge/engineering-v1.json').read_text())
+    corpus=json.loads((ROOT/'knowledge/engineering-v2.json').read_text())
     corpus['documents'][0]['excerpt']='forged source'
     manifest=tmp_path/'tamper.json';manifest.write_text(json.dumps(corpus))
     with pytest.raises(ValueError,match='mismatch'): EngineeringIndex(ROOT,manifest)

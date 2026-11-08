@@ -8,7 +8,7 @@ if __name__ == '__main__':
     parser.add_argument('--output',type=Path,required=True)
     args=parser.parse_args()
     root=Path(__file__).resolve().parents[1]
-    index=EngineeringIndex(root,root/'knowledge/engineering-v1.json')
+    index=EngineeringIndex(root,root/'knowledge/engineering-v2.json')
     labels_path=root/'evaluation/retrieval-v1.json'
     labels=json.loads(labels_path.read_text())
     report={'method':'BM25 lexical retrieval; extractive citations, no generated answer',

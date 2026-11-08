@@ -1,5 +1,6 @@
 """Mission HTTP endpoints."""
 
+from backend.api.simulation_gate import simulation_slot
 from fastapi import APIRouter, Depends, HTTPException
 
 from backend.api.dependencies import (
@@ -43,7 +44,8 @@ def execute_mission(
     orchestrator: OrchestratorService = Depends(get_orchestrator_service),
 ) -> MissionExecutionSummary:
     """Run plan-perceive-navigate pipeline for the mission."""
-    summary = orchestrator.execute(mission_id)
+    with simulation_slot():
+        summary = orchestrator.execute(mission_id)
     if summary is None:
         raise HTTPException(status_code=404, detail="Mission not found")
     return summary

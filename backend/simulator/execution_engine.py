@@ -122,6 +122,7 @@ class WaypointExecutor:
                         TELEMETRY_SOURCE_EXECUTION_ENGINE,
                         {"robot_x": sampled.x, "robot_y": sampled.y,
                          "robot_theta": sampled.theta, "simulation_step": total_simulator_steps,
+                         "simulation_time_seconds": total_simulator_steps * self._env.step_dt,
                          "backend": "pybullet"},
                     )
             else:
@@ -135,6 +136,9 @@ class WaypointExecutor:
                     TELEMETRY_SOURCE_EXECUTION_ENGINE,
                     {
                         "reason": "max_steps_per_waypoint",
+                        "simulation_step": total_simulator_steps,
+                        "simulation_time_seconds": total_simulator_steps * self._env.step_dt,
+                        "robot_theta": pose.theta,
                         "waypoint_index": idx,
                         "robot_x": pose.x,
                         "robot_y": pose.y,
@@ -157,6 +161,8 @@ class WaypointExecutor:
             TELEMETRY_SOURCE_EXECUTION_ENGINE,
             {
                 "waypoints_reached": len(waypoints),
+                "simulation_step": total_simulator_steps,
+                "simulation_time_seconds": total_simulator_steps * self._env.step_dt,
                 "robot_x": pose.x,
                 "robot_y": pose.y,
                 "robot_theta": pose.theta,

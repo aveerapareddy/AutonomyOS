@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     database_path: str = ""
     frontend_directory: str = ""
     public_demo: bool = False
+    workflow_directory: str = ""
+    operator_token: str = ""
 
 
 @lru_cache

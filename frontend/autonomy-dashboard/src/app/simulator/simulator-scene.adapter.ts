@@ -166,7 +166,16 @@ export function buildSimulatorScene(
   replay = false,
 ): SimulatorScene {
   if (!execution) {
-    return buildIdleSimulatorScene();
+    const ready=[...telemetry].reverse().find(e=>e.event_type==='scene_ready');
+    if(!ready)return buildIdleSimulatorScene();
+    execution={mission_id:ready.mission_id,status:'running',plan_steps:[],path_found:true,
+      waypoint_count:0,telemetry_count:telemetry.length,
+      world_bounds:ready.payload['world_bounds'] as MissionExecutionSummary['world_bounds'],
+      obstacles:ready.payload['obstacles'] as MissionExecutionSummary['obstacles'],
+      detected_target:ready.payload['target'] as Record<string,unknown>,
+      execution_steps:(ready.payload['waypoints'] as {x:number;y:number}[]).map((w,i)=>({waypoint_index:i,target_x:w.x,target_y:w.y,reached:false})),
+    };
+    replay=true;
   }
 
   const obstacles =

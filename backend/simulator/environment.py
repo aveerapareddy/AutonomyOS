@@ -76,6 +76,11 @@ class SimulationEnvironment:
         sx, sy, st = self._robot_start
         self._robot.set_pose(sx, sy, st)
 
+    @property
+    def step_dt(self) -> float:
+        """Configured simulation timestep in seconds."""
+        return self._step_dt
+
     def step(self, action: Union[RobotAction, str]) -> None:
         """Apply one movement action and step the simulation."""
         if self._robot is None:

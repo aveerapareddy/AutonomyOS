@@ -89,3 +89,15 @@ def test_sampled_state_is_simulator_pose():
         assert frames[-1].payload["backend"] == "pybullet"
     finally:
         env.shutdown()
+
+
+def test_recorded_simulation_clock_uses_configured_timestep():
+    env=SimulationEnvironment(use_gui=False,step_dt=0.01)
+    try:
+        telemetry=TelemetryService()
+        WaypointExecutor(env,'clock',telemetry,ExecutionConfig(telemetry_interval_steps=3)).execute([Waypoint(x=.5,y=0)])
+        events=[e for e in telemetry.get_events_for_mission('clock') if e.event_type=='robot_state']
+        assert events
+        assert all(e.payload['simulation_time_seconds']==pytest.approx(e.payload['simulation_step']*.01) for e in events)
+    finally:
+        env.shutdown()

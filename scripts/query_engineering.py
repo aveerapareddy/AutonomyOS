@@ -10,7 +10,7 @@ if __name__ == '__main__':
     parser.add_argument('--k',type=int,default=3)
     args=parser.parse_args()
     root=Path(__file__).resolve().parents[1]
-    index=EngineeringIndex(root,root/'knowledge/engineering-v1.json')
+    index=EngineeringIndex(root,root/'knowledge/engineering-v2.json')
     print(json.dumps({'corpus_hash':index.corpus_hash,'question':args.question,
                       'answer_mode':'extractive context; no generated answer',
                       'sources':index.search(args.question,args.k)},indent=2))

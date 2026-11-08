@@ -205,6 +205,13 @@ class OrchestratorService:
             if self._get_execution_world_layout
             else None
         )
+        self._telemetry_service.record(
+            mission_id, "scene_ready", TELEMETRY_SOURCE_ORCHESTRATOR_SERVICE,
+            {"world_bounds": viz_bounds,
+             "obstacles": [o.model_dump(mode="json") for o in viz_obstacles],
+             "target": {"x": goal.x, "y": goal.y},
+             "waypoints": [w.model_dump(mode="json") for w in nav_result.waypoints]},
+        )
         execution_result = None
         try:
             execution_result = run_sim_execution(

@@ -21,6 +21,10 @@ Versioned engineering-source retrieval and a bounded, split-seed controller-budg
 study are now available. See [knowledge and tuning](docs/KNOWLEDGE_AND_TUNING.md)
 for commands, measured results and limitations.
 
+The [operator dashboard](docs/OPERATOR_DASHBOARD.md) now exposes saved-model
+proposal review, approved execution and audit history, alongside incremental
+mission telemetry and simulation-clock replay. It is opt-in and local-only.
+
 ## Project Overview
 
 AutonomyOS is an experimental robotics autonomy platform. The goal is to explore how modern AI systems can integrate with robotics simulation: natural language mission input, perception, autonomous navigation, and evaluation of behavior in reproducible scenarios.
