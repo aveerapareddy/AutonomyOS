@@ -47,12 +47,14 @@ def run(stage_path,output):
              position=np.array([0.,-6.,.1]),orientation=np.array([math.sqrt(.5),0.,0.,math.sqrt(.5)])))
         camera=Camera(prim_path='/World/OverviewCamera',name='overview',position=np.array([0.,0.,20.]),
                       orientation=np.array([math.sqrt(.5),0.,math.sqrt(.5),0.]),frequency=20,resolution=(320,240))
-        world.reset();camera.initialize()
+        world.reset();camera.initialize();camera.add_rgba_to_frame()
         drive=DifferentialController(name='bounded_lane_controller',wheel_radius=.03,wheel_base=.1125)
         frames={}
         def capture(name):
-            for _ in range(20):world.step(render=True)
-            rgba=np.asarray(camera.get_rgba())
+            for _ in range(120):
+                world.step(render=True)
+                rgba=np.asarray(camera.get_rgba())
+                if rgba.shape==(240,320,4) and np.isfinite(rgba).all() and float(rgba[:,:,:3].std())>1:break
             if rgba.shape!=(240,320,4) or not np.isfinite(rgba).all() or float(rgba[:,:,:3].std())<=1:raise RuntimeError('Camera frame missing or blank')
             path=output/(name+'.png');Image.fromarray(rgba.astype(np.uint8),'RGBA').save(path)
             frames[name]={'path':path.name,'sha256':hashlib.sha256(path.read_bytes()).hexdigest(),'shape':list(rgba.shape),'rgb_std':float(rgba[:,:,:3].std())}
