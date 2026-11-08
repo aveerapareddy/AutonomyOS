@@ -47,7 +47,7 @@ def run(stage_path,output):
              position=np.array([0.,-6.,.1]),orientation=np.array([math.sqrt(.5),0.,0.,math.sqrt(.5)])))
         camera=Camera(prim_path='/World/OverviewCamera',name='overview',position=np.array([0.,0.,20.]),
                       orientation=np.array([math.sqrt(.5),0.,math.sqrt(.5),0.]),frequency=20,resolution=(320,240))
-        world.reset();camera.initialize();camera.set_focal_length(16.);camera.add_rgb_to_frame()
+        world.reset();camera.initialize();camera.set_focal_length(1.6);camera.add_rgb_to_frame()
         drive=DifferentialController(name='bounded_lane_controller',wheel_radius=.03,wheel_base=.1125)
         frames={}
         def capture(name):
