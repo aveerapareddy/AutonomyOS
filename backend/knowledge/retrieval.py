@@ -12,7 +12,10 @@ def sha(data: bytes) -> str:
 
 
 def tokens(text: str) -> list[str]:
-    return re.findall(r"[a-z0-9]+", text.lower().replace('_', ' '))
+    text = re.sub(r'([a-z0-9])([A-Z])', r'\1 \2', text)
+    result = re.findall(r"[a-z0-9]+", text.lower().replace('_', ' '))
+    # Documented engineering abbreviation, applied identically to corpus and query.
+    return [expanded for token in result for expanded in (['fov','field','view'] if token=='fov' else [token])]
 
 
 class EngineeringIndex:

@@ -40,3 +40,10 @@ def test_citation_tamper_and_path_escape_rejected(tmp_path):
     corpus['documents'][0]['path']='../outside.py'
     manifest.write_text(json.dumps(corpus))
     with pytest.raises(ValueError,match='Unsafe'): EngineeringIndex(ROOT,manifest)
+
+
+def test_engineering_fov_abbreviation_is_retrievable():
+    from backend.knowledge.answers import answer
+    result=answer(ROOT,'How is the camera field of view configured?')
+    assert not result['abstained']
+    assert any(s['document_id']=='camera' for s in result['sources'])
