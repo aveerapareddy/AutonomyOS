@@ -39,7 +39,7 @@ def run(output):
     command('frontend-install',[str(node_bin/'npm'),'ci'],ROOT/'frontend/autonomy-dashboard',env)
     command('frontend-build',[str(node_bin/'npm'),'run','build','--','--base-href','/demo/'],ROOT/'frontend/autonomy-dashboard',env)
     command('tests',[python,'-m','pytest','backend/tests','-q','--junitxml='+str(output/'junit.xml')],env=env)
-    command('freeze',[python,'-m','pip','freeze'],env=env)
+    command('freeze',[uv,'pip','freeze','--python',python],env=env)
     command('source',['git','archive','--format=tar.gz','--output='+str(output/'source.tar.gz'),'HEAD'])
     env={**env,'AUTONOMY_PUBLIC_DEMO':'true','AUTONOMY_DATABASE_PATH':str(output/'missions.sqlite3'),
          'AUTONOMY_FRONTEND_DIRECTORY':str(ROOT/'frontend/autonomy-dashboard/dist/autonomy-dashboard/browser'),
