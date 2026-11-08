@@ -38,7 +38,7 @@ def chunks(index):
 def build(root,path):
     import numpy as np
     import importlib.metadata as meta
-    corpus=EngineeringIndex(root,root/'knowledge/engineering-v3.json');rows=chunks(corpus)
+    corpus=EngineeringIndex(root,root/'knowledge/engineering-v4.json');rows=chunks(corpus)
     vectors=embed([r['text'] for r in rows])
     path.parent.mkdir(parents=True,exist_ok=True)
     np.savez_compressed(path,vectors=vectors)
@@ -50,7 +50,7 @@ def build(root,path):
 def query(root,path,question,k=3):
     import numpy as np
     if not 1<=len(question)<=2000 or not 1<=k<=10:raise ValueError('Query outside bounds')
-    corpus=EngineeringIndex(root,root/'knowledge/engineering-v3.json');metadata=json.loads(path.with_suffix('.json').read_text())
+    corpus=EngineeringIndex(root,root/'knowledge/engineering-v4.json');metadata=json.loads(path.with_suffix('.json').read_text())
     if metadata['corpus_hash']!=corpus.corpus_hash or metadata['revision']!=REVISION or metadata['index_sha256']!=sha(path.read_bytes()):raise ValueError('Semantic index provenance changed')
     vectors=np.load(path,allow_pickle=False)['vectors'];q=embed([question],local_only=True)[0]
     scores=vectors@q;rows=[];seen=set()

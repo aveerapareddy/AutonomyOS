@@ -39,6 +39,10 @@ export class OperationsComponent implements OnDestroy {
   }catch(e){this.error='Invalid site JSON';}
  }
  cancel():void{this.request('POST','/jobs/'+this.selected.id+'/cancel',{},data=>this.selected=data);}
+ blockedExample():void {
+  this.siteText=JSON.stringify({name:'Blocked transfer lane',units:'meters',bounds:[-10,10,-10,10],start:[0,-6,1.57079632679],target:[0,6],assets:[{id:'closed-barrier',kind:'wall',x:0,y:0,half_extents:[10,.5,1]}]},null,2);
+  this.preview=null;
+ }
  validate():void{try{this.request('POST','/site/validate',JSON.parse(this.siteText),data=>{
   const site=data.site;
   this.preview={mode:'live',bounds:{minX:site.bounds[0],maxX:site.bounds[1],minY:site.bounds[2],maxY:site.bounds[3]},obstacles:site.assets.map((a:any)=>({x:a.x,y:a.y,halfExtents:a.half_extents})),obstacleHalfExtent:.5,target:{x:site.target[0],y:site.target[1]},robot:{x:site.start[0],y:site.start[1],theta:site.start[2]},plannedPath:[],executedPath:[]};

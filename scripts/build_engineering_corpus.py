@@ -24,7 +24,7 @@ def build():
         raw=(ROOT/relative).read_bytes();lines=raw.decode().splitlines()
         docs.append({'id':ident,'title':title,'path':relative,'source_sha256':sha(raw),
                      'start_line':1,'end_line':len(lines),'excerpt':'\n'.join(lines)})
-    return {'schema_version':1,'version':'engineering-v3','documents':docs}
+    return {'schema_version':1,'version':'engineering-v4','documents':docs}
 
 if __name__ == '__main__':
-    (ROOT/'knowledge/engineering-v3.json').write_text(json.dumps(build(),indent=2)+'\n')
+    (ROOT/'knowledge/engineering-v4.json').write_text(json.dumps(build(),indent=2)+'\n')

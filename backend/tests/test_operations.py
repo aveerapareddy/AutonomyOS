@@ -159,3 +159,44 @@ def test_api_does_not_implicitly_enable_semantic_inference(tmp_path,monkeypatch)
         response=TestClient(app).post('/operations/knowledge',headers={'Authorization':'Bearer local-test-read-token-with-24-characters'},json={'question':'How does the controller work?','method':'semantic'})
         assert response.status_code==503
     finally:get_settings.cache_clear()
+
+
+def test_failed_mission_is_a_failed_evaluation_not_a_successful_job(tmp_path):
+    site=SiteSpec(name='Blocked lane',start=(0,-6,1.57),target=(0,6),assets=[Asset(id='barrier',kind='wall',x=0,y=0,half_extents=(10,.5,1))])
+    store=JobStore(tmp_path);item=store.submit(JobRequest(kind='site',site=site),'expected-no-path',actor='test-operator')
+    assert store.run_one()
+    job=store.get(item['id'])
+    assert job['status']=='evaluation_failed'
+    assert job['result']['evaluation_passed'] is False
+    assert job['result']['summary']['status']=='failed'
+    assert job['events'][0]['payload']['submitted_by']=='test-operator'
+    assert any(n['kind']=='failure' for n in build_graph(store)['nodes'])
+
+
+def test_public_policy_denials_are_traced_without_recording_tokens(tmp_path):
+    from fastapi import FastAPI
+    from backend.api.demo_guard import DemoGuard
+    from backend.core.observability import TelemetryMiddleware
+    local=FastAPI();local.add_middleware(DemoGuard,public_demo=True);local.add_middleware(TelemetryMiddleware,directory=str(tmp_path))
+    @local.get('/workflows')
+    def forbidden():raise AssertionError('Must be denied before handler')
+    response=TestClient(local).get('/workflows',headers={'Authorization':'Bearer synthetic-private-token'})
+    assert response.status_code==403 and len(response.headers['X-Trace-ID'])==32
+    span=json.loads((tmp_path/'http-spans.jsonl').read_text())
+    assert span['attributes']['http.response.status_code']==403
+    assert 'synthetic-private-token' not in (tmp_path/'http-spans.jsonl').read_text()
+
+
+def test_semantic_runtime_admission_is_bounded(monkeypatch):
+    import sys
+    from backend.api.routes.operations import _semantic_lock
+    monkeypatch.setenv('AUTONOMY_OPERATOR_TOKEN','local-test-read-token-with-24-characters')
+    monkeypatch.setenv('AUTONOMY_PUBLIC_DEMO','false')
+    monkeypatch.setenv('AUTONOMY_SEMANTIC_PYTHON',sys.executable)
+    monkeypatch.setenv('AUTONOMY_SEMANTIC_INDEX','/fixture-index-not-executed')
+    get_settings.cache_clear()
+    try:
+        with _semantic_lock:
+            response=TestClient(app).post('/operations/knowledge',headers={'Authorization':'Bearer local-test-read-token-with-24-characters'},json={'question':'How does the controller work?','method':'semantic'})
+        assert response.status_code==429
+    finally:get_settings.cache_clear()

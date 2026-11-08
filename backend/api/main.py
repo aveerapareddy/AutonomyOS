@@ -24,8 +24,8 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-app.add_middleware(TelemetryMiddleware, directory=get_settings().traces_directory)
 app.add_middleware(DemoGuard, public_demo=get_settings().public_demo)
+app.add_middleware(TelemetryMiddleware, directory=get_settings().traces_directory)
 
 app.add_middleware(
     CORSMiddleware,

@@ -104,3 +104,21 @@ def test_benchmark_execution_uses_scenario_geometry() -> None:
     data = resp.json()
     assert len(data["scenario_results"]) == 1
     assert data["scenario_results"][0]["target_position"] == list(spec.target_position)
+
+
+def test_generator_has_bounded_rejection_sampling(monkeypatch):
+    from backend.scenarios import generator
+    import pytest
+    with pytest.raises(ValueError,match='dimensions'):generator.generate_scenarios(1,42,bounds=(0,2,0,2))
+    with pytest.raises(ValueError,match='count'):generator.generate_scenarios(101,42)
+    monkeypatch.setattr(generator,'_clear_of_obstacles',lambda *args,**kwargs:False)
+    with pytest.raises(ValueError,match='sampling budget'):generator.generate_scenarios(1,42)
+
+
+def test_start_fallback_is_clear_and_in_bounds():
+    from backend.scenarios.generator import _pick_start,_clear_of_obstacles
+    class StuckRandom:
+        def uniform(self,a,b):return 0.0
+    start=_pick_start(StuckRandom(),(-5,5,-5,5),[(0,0)],3,3)
+    assert -4<=start[0]<=4 and -4<=start[1]<=4
+    assert _clear_of_obstacles(start[0],start[1],[(0,0)])

@@ -37,6 +37,7 @@ metadata:
   namespace: autonomyos-validation
 spec:
   replicas: 1
+  strategy: {type: Recreate}
   selector:
     matchLabels: {app: autonomyos-api}
   template:
@@ -72,6 +73,7 @@ metadata:
   namespace: autonomyos-validation
 spec:
   replicas: 1
+  strategy: {type: Recreate}
   selector:
     matchLabels: {app: autonomyos-worker}
   template:

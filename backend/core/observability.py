@@ -6,6 +6,7 @@ from threading import Lock
 import time
 from starlette.middleware.base import BaseHTTPMiddleware
 from opentelemetry import trace
+from opentelemetry.trace import Status,StatusCode
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor,SpanExporter,SpanExportResult
 
@@ -36,6 +37,7 @@ class TelemetryMiddleware(BaseHTTPMiddleware):
         if len(route)>100 or not route.startswith(('/missions','/operations','/workflows','/health','/metrics','/demo','/benchmarks','/docs','/openapi','/redoc')):route='/other'
         name=request.method+' '+route;start=time.monotonic();status=500
         with self.tracer.start_as_current_span(name) as span:
+            request.state.trace_id=f'{span.get_span_context().trace_id:032x}'
             span.set_attribute('http.request.method',request.method);span.set_attribute('http.route',route)
             try:
                 response=await call_next(request);status=response.status_code
@@ -43,8 +45,9 @@ class TelemetryMiddleware(BaseHTTPMiddleware):
                 return response
             finally:
                 elapsed=time.monotonic()-start;span.set_attribute('http.response.status_code',status)
+                if status>=500:span.set_status(Status(StatusCode.ERROR))
                 with self.lock:
                     if name not in self.routes and len(self.routes)>=100:name='OTHER'
-                    metric=self.routes.setdefault(name,{'requests':0,'errors':0,'duration_seconds':0.,'maximum_seconds':0.})
-                    metric['requests']+=1;metric['errors']+=int(status>=500);metric['duration_seconds']+=elapsed
+                    metric=self.routes.setdefault(name,{'requests':0,'errors':0,'denials':0,'duration_seconds':0.,'maximum_seconds':0.})
+                    metric['requests']+=1;metric['errors']+=int(status>=500);metric['denials']+=int(status in {401,403});metric['duration_seconds']+=elapsed
                     metric['maximum_seconds']=max(metric['maximum_seconds'],elapsed)

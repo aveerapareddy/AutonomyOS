@@ -10,7 +10,7 @@ ARG TARGETARCH
 WORKDIR /build
 COPY backend/requirements-demo.txt ./requirements-demo.txt
 RUN if [ "$TARGETARCH" = "arm64" ]; then apt-get update && apt-get install -y --no-install-recommends g++; fi \
-    && pip wheel --no-cache-dir --wheel-dir=/wheels -r requirements-demo.txt
+    && pip wheel --no-cache-dir --wheel-dir=/wheels pip==26.3 setuptools==84.2.1 -r requirements-demo.txt
 
 FROM python:3.11-slim-bookworm
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 \
@@ -19,7 +19,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 \
 WORKDIR /app
 COPY backend/requirements-demo.txt ./requirements-demo.txt
 COPY --from=wheels /wheels /wheels
-RUN pip install --no-cache-dir --no-index --find-links=/wheels -r requirements-demo.txt \
+RUN pip install --no-cache-dir --no-index --find-links=/wheels --upgrade pip==26.3 setuptools==84.2.1 \
+    && pip install --no-cache-dir --no-index --find-links=/wheels -r requirements-demo.txt \
     && rm -rf /wheels \
     && useradd --uid 10001 --create-home autonomy \
     && mkdir /data && chown autonomy:autonomy /data

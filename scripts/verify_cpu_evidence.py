@@ -13,7 +13,7 @@ def verify(archive,output):
         if len(names)!=len(set(names)) or len(names)>100 or sum(f.file_size for f in infos)>30_000_000:raise ValueError('Unsafe or oversized archive')
         for name in names:
             path=PurePosixPath(name)
-            if path.is_absolute() or '..' in path.parts or '\\' in name:raise ValueError('Unsafe member path')
+            if path.is_absolute() or '..' in path.parts or '\\' in name or path.as_posix()!=name:raise ValueError('Unsafe member path')
         manifest=json.loads(z.read('manifest.json'))
         if set(names)!={'manifest.json',*manifest['files']}:raise ValueError('Manifest member mismatch')
         for name,record in manifest['files'].items():

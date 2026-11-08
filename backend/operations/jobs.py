@@ -51,7 +51,7 @@ class JobStore:
     def event(self,db,ident,event,payload=None):
         seq=db.execute('SELECT COALESCE(MAX(sequence),0)+1 FROM events WHERE job=?',(ident,)).fetchone()[0]
         db.execute('INSERT INTO events VALUES(?,?,?,?,?)',(ident,seq,event,time.time(),json.dumps(payload or {})))
-    def submit(self,request:JobRequest,key:str):
+    def submit(self,request:JobRequest,key:str,actor='local-cli'):
         if not re.fullmatch(r'[A-Za-z0-9_-]{8,80}',key):raise ValueError('Idempotency key must be 8..80 safe characters')
         payload=request.model_dump(mode='json');hashed=digest(payload)
         with self.connect() as db:
@@ -65,7 +65,7 @@ class JobStore:
                 ident=uuid.uuid4().hex;now=time.time()
                 db.execute('INSERT INTO jobs(id,key,input_hash,request,status,created,updated) VALUES(?,?,?,?,?,?,?)',
                            (ident,key,hashed,json.dumps(payload),'queued',now,now))
-                self.event(db,ident,'submitted',{'input_hash':hashed})
+                self.event(db,ident,'submitted',{'input_hash':hashed,'submitted_by':actor})
         return self.get(ident)
     def get(self,ident):
         if not re.fullmatch(r'[0-9a-f]{32}',ident):raise ValueError('Invalid job identifier')
@@ -79,7 +79,7 @@ class JobStore:
     def list(self):
         with self.connect() as db:
             return [dict(r) for r in db.execute('SELECT id,status,created,updated,input_hash FROM jobs ORDER BY created DESC LIMIT 100')]
-    def cancel(self,ident):
+    def cancel(self,ident,actor='local-cli'):
         self.get(ident)
         with self.connect() as db:
             db.execute('BEGIN IMMEDIATE')
@@ -87,7 +87,7 @@ class JobStore:
             if row['status'] in {'queued','running'}:
                 status='cancelled' if row['status']=='queued' else 'running'
                 db.execute('UPDATE jobs SET cancel=1,status=?,updated=? WHERE id=?',(status,time.time(),ident))
-                self.event(db,ident,'cancellation_requested')
+                self.event(db,ident,'cancellation_requested',{'actor':actor})
         return self.get(ident)
     def claim(self):
         with self.connect() as db:
@@ -139,7 +139,7 @@ class JobStore:
             if process.returncode:raise ValueError(f'Worker exited {process.returncode}; inspect worker.log')
             result=json.loads((directory/'result.json').read_text())
             if result.get('input_hash')!=item['input_hash']:raise ValueError('Worker result input hash mismatch')
-            self.finish(ident,'completed',result)
+            self.finish(ident,'completed' if result.get('evaluation_passed') is True else 'evaluation_failed',result)
         except Exception as exc:
             if process and process.poll() is None:os.killpg(process.pid,signal.SIGKILL);process.wait()
             self.finish(ident,'failed',error=str(exc))

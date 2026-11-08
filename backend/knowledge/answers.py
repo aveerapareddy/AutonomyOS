@@ -6,7 +6,7 @@ from backend.knowledge.retrieval import EngineeringIndex,tokens
 STOP={'a','an','the','is','are','how','what','where','does','do','in','of','to','for','and','with','can','i','it','this','that','be','on','use','used'}
 
 def answer(root:Path,question:str):
-    index=EngineeringIndex(root,root/'knowledge/engineering-v3.json')
+    index=EngineeringIndex(root,root/'knowledge/engineering-v4.json')
     hits=index.search(question,3)
     terms=set(tokens(question))-STOP
     matches=[]

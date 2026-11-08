@@ -7,7 +7,7 @@ from backend.knowledge.retrieval import EngineeringIndex,evaluate,sha
 if __name__=='__main__':
     p=argparse.ArgumentParser();p.add_argument('--index',type=Path,required=True);p.add_argument('--output',type=Path,required=True);a=p.parse_args()
     root=Path(__file__).resolve().parents[1];labels_path=root/'evaluation/retrieval-v1.json';labels=json.loads(labels_path.read_text())
-    index=EngineeringIndex(root,root/'knowledge/engineering-v3.json');result={'model_id':MODEL,'revision':REVISION,'device':'cpu','labels_sha256':sha(labels_path.read_bytes()),'splits':{}}
+    index=EngineeringIndex(root,root/'knowledge/engineering-v4.json');result={'model_id':MODEL,'revision':REVISION,'device':'cpu','labels_sha256':sha(labels_path.read_bytes()),'splits':{}}
     for split in ['development','held_out']:
         rows=[]
         for case in labels[split]:

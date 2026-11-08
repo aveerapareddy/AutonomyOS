@@ -3,6 +3,7 @@ from pathlib import Path
 import json
 import subprocess
 from typing import Literal
+from threading import Lock
 from fastapi import APIRouter,Depends,HTTPException,Request
 from pydantic import BaseModel,ConfigDict,Field
 from backend.api.auth import Principal,authenticate
@@ -14,6 +15,7 @@ from backend.knowledge.answers import answer
 from backend.knowledge.graph import build_graph
 
 router=APIRouter(prefix='/operations',tags=['operations'])
+_semantic_lock=Lock()
 
 def store(principal:Principal=Depends(authenticate)):
     principal.require('read');path=get_settings().operations_directory
@@ -34,14 +36,14 @@ class Submission(BaseModel):
 
 @router.post('/jobs',status_code=202)
 def submit(body:Submission,jobs:JobStore=Depends(store),principal:Principal=Depends(authenticate)):
-    principal.require('execute');return call(lambda:jobs.submit(body.request,body.key))
+    principal.require('execute');return call(lambda:jobs.submit(body.request,body.key,principal.name))
 
 @router.get('/jobs/{ident}')
 def get(ident:str,jobs:JobStore=Depends(store)):return call(lambda:jobs.get(ident))
 
 @router.post('/jobs/{ident}/cancel')
 def cancel(ident:str,jobs:JobStore=Depends(store),principal:Principal=Depends(authenticate)):
-    principal.require('execute');return call(lambda:jobs.cancel(ident))
+    principal.require('execute');return call(lambda:jobs.cancel(ident,principal.name))
 
 @router.post('/site/validate')
 def validate(site:SiteSpec,principal:Principal=Depends(authenticate)):
@@ -63,11 +65,13 @@ def knowledge(body:Question,principal:Principal=Depends(authenticate)):
     if body.method=='semantic':
         settings=get_settings()
         if not settings.semantic_python or not settings.semantic_index:raise HTTPException(503,'Semantic retrieval is not configured; select extractive retrieval')
+        if not _semantic_lock.acquire(blocking=False):raise HTTPException(429,'Semantic inference is busy',headers={'Retry-After':'2'})
         try:
             process=subprocess.run([settings.semantic_python,'-m','scripts.semantic_retrieval','--index',settings.semantic_index,'--question',body.question],cwd=root,capture_output=True,text=True,timeout=30)
             if process.returncode:raise HTTPException(503,'Semantic retrieval failed; inspect server model/cache configuration')
             return json.loads(process.stdout)
         except subprocess.TimeoutExpired:raise HTTPException(504,'Semantic retrieval timed out')
+        finally:_semantic_lock.release()
     return call(lambda:answer(root,body.question))
 
 @router.get('/graph')
