@@ -33,13 +33,13 @@ def run(output,python,archive,manifest):
          'AUTONOMY_FRONTEND_DIRECTORY':str(dist),'AUTONOMY_TRACES_DIRECTORY':str(output/'traces'),
          'AUTONOMY_OPERATOR_TOKEN':'','AUTONOMY_OPERATOR_ACCOUNTS_JSON':'[]','AUTONOMY_WORKFLOW_DIRECTORY':'',
          'AUTONOMY_OPERATIONS_DIRECTORY':'','AUTONOMY_PLANNER_MODE':'rule_based'}
-    def command(name,args):
-        with (output/(name+'.log')).open('wb') as log:r=subprocess.run(args,cwd=ROOT,env=env,stdout=log,stderr=subprocess.STDOUT,timeout=900)
+    def command(name,args,stage_env=None):
+        with (output/(name+'.log')).open('wb') as log:r=subprocess.run(args,cwd=ROOT,env=stage_env or env,stdout=log,stderr=subprocess.STDOUT,timeout=900)
         if r.returncode:raise RuntimeError(name+' failed')
     uv='/usr/local/bin/uv'
     if not Path(uv).exists():uv='uv'
     command('dependencies',[uv,'pip','install','--python',python,'-r','backend/requirements-demo.txt','-r','requirements-usd.txt','pytest'])
-    command('tests',[python,'-m','pytest','backend/tests','-q','--junitxml='+str(output/'junit.xml')])
+    command('tests',[python,'-m','pytest','backend/tests','-q','--junitxml='+str(output/'junit.xml')],{**env,'AUTONOMY_PUBLIC_DEMO':'false','AUTONOMY_DATABASE_PATH':'','AUTONOMY_TRACES_DIRECTORY':''})
     command('freeze',[uv,'pip','freeze','--python',python])
     command('source',['git','archive','--format=tar.gz','--output='+str(output/'source.tar.gz'),'HEAD'])
     def start():
