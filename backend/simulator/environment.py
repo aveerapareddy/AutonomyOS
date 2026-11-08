@@ -8,8 +8,10 @@ try:
 except ImportError:
     pb = None
 
+from backend.schemas.camera import CameraConfig, CapturedFrame
 from backend.schemas.world import WorldObject
 from backend.simulator.actions import RobotAction
+from backend.simulator.camera import capture_frame as camera_capture_frame
 from backend.simulator.robot import Robot, RobotPose
 from backend.simulator.world_builder import (
     BuiltWorld,
@@ -74,6 +76,11 @@ class SimulationEnvironment:
         sx, sy, st = self._robot_start
         self._robot.set_pose(sx, sy, st)
 
+    @property
+    def step_dt(self) -> float:
+        """Configured simulation timestep in seconds."""
+        return self._step_dt
+
     def step(self, action: Union[RobotAction, str]) -> None:
         """Apply one movement action and step the simulation."""
         if self._robot is None:
@@ -132,6 +139,12 @@ class SimulationEnvironment:
             raise RuntimeError("Environment not initialized")
         x, y = self._world.target_position
         return TargetPose(x=x, y=y, z=self._world.target_z)
+
+    def capture_frame(self, camera_config: CameraConfig) -> CapturedFrame:
+        """Capture one RGB frame using the given camera config."""
+        if self._client_id is None:
+            raise RuntimeError("Environment not initialized or already shut down")
+        return camera_capture_frame(self._client_id, camera_config)
 
     def shutdown(self) -> None:
         """Disconnect the physics client."""

@@ -1,12 +1,19 @@
 """FastAPI application entrypoint."""
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+from backend.core.config import get_settings
+from fastapi.middleware.cors import CORSMiddleware
 
+from backend.api.routes.operations import router as operations_router
+from backend.api.routes.workflows import router as workflows_router
 from backend.api.routes.benchmarks import router as benchmarks_router
 from backend.api.routes.missions import router as missions_router
 from backend.api.routes.replay import router as replay_router
 from backend.api.routes.telemetry import router as telemetry_router
+from backend.core.observability import TelemetryMiddleware
 from backend.core.logging import get_logger
+from backend.api.demo_guard import DemoGuard
 
 logger = get_logger(__name__)
 
@@ -17,11 +24,33 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
+app.add_middleware(DemoGuard, public_demo=get_settings().public_demo)
+app.add_middleware(TelemetryMiddleware, directory=get_settings().traces_directory)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:4200",
+        "http://127.0.0.1:4200",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 @app.get("/")
 def root() -> dict[str, str]:
     """Service availability check."""
     return {"service": "AutonomyOS", "status": "running"}
+
+
+@app.get("/capabilities")
+def capabilities():
+    settings=get_settings()
+    return {"public_demo":settings.public_demo,"operator_workspace":not settings.public_demo and bool(settings.workflow_directory),
+            "operations_workspace":not settings.public_demo and bool(settings.operations_directory),
+            "telemetry":"server-sent events with cursor replay","simulator":"kinematic PyBullet"}
 
 
 @app.get("/health")
@@ -30,7 +59,14 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+app.include_router(operations_router)
+app.include_router(workflows_router)
 app.include_router(missions_router)
 app.include_router(telemetry_router)
 app.include_router(replay_router)
 app.include_router(benchmarks_router)
+
+
+# Optional same-origin production bundle; API root and health endpoints remain intact.
+if get_settings().frontend_directory:
+    app.mount("/demo", StaticFiles(directory=get_settings().frontend_directory, html=True), name="dashboard")

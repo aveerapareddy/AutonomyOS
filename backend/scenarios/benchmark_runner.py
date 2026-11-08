@@ -10,6 +10,7 @@ from backend.scenarios.scenario_config import ScenarioConfig
 from backend.services.mission_service import MissionService
 from backend.services.orchestrator_service import OrchestratorService
 from backend.services.telemetry_service import TelemetryService
+from backend.simulator.execution_engine import ExecutionConfig
 from backend.simulator.world_builder import WorldLayoutSpec
 
 # Backlog: single scenario adapter so planning layout and WorldLayoutSpec share one conversion.
@@ -22,6 +23,7 @@ def _world_layout_spec_from_scenario(scenario: ScenarioConfig) -> WorldLayoutSpe
         obstacle_positions=list(scenario.obstacle_positions),
         obstacle_types=list(scenario.obstacle_types),
         target_position=scenario.target_position,
+        obstacle_half_extents=scenario.obstacle_half_extents or None,
     )
 
 
@@ -35,6 +37,7 @@ def _layout_from_scenario(
             object_type=typ,
             x=pos[0],
             y=pos[1],
+            half_extents=scenario.obstacle_half_extents[i] if scenario.obstacle_half_extents else (.5,.5,.5),
         )
         for i, (pos, typ) in enumerate(
             zip(scenario.obstacle_positions, scenario.obstacle_types)
@@ -61,6 +64,7 @@ def run_benchmark(
     telemetry_service: TelemetryService,
     benchmark_id: str,
     benchmark_name: str,
+    execution_config: ExecutionConfig | None = None,
 ) -> BenchmarkSummary:
     """Run full pipeline for each scenario; return aggregate and per-scenario results."""
     results: List[ScenarioBenchmarkResult] = []
@@ -84,6 +88,7 @@ def run_benchmark(
             world_layout_provider=layout_provider,
             robot_start_provider=get_robot_start,
             execution_world_layout_provider=get_execution_world_layout,
+            execution_config=execution_config,
         )
         summary = orchestrator.execute(mission_resp.mission_id)
 
@@ -118,6 +123,7 @@ def run_benchmark(
                 waypoint_count=waypoint_count,
                 path_length_raw=path_length_raw,
                 execution_steps=execution_steps,
+                simulator_steps=summary.simulator_steps,
                 message=summary.message,
             )
         )

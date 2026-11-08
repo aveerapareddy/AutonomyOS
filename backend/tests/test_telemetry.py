@@ -87,3 +87,66 @@ def test_telemetry_events_have_monotonic_sequence() -> None:
     svc.record(mission_id, TelemetryEventType.PATH_COMPUTED, "navigation", {})
     events = svc.get_events_for_mission(mission_id)
     assert [e.sequence for e in events] == [1, 2]
+
+
+def test_telemetry_cursor_reconnect():
+    response = client.post("/missions", json={"mission_text": "Navigate to target"})
+    mission_id = response.json()["mission_id"]
+    first = client.get(f"/missions/{mission_id}/telemetry").json()
+    cursor = first["events"][-1]["sequence"]
+    assert client.get(f"/missions/{mission_id}/telemetry?after_sequence={cursor}").json()["events"] == []
+    assert client.get(f"/missions/{mission_id}/telemetry?after_sequence=-1").status_code == 422
+
+
+def test_durable_trace_export_survives_restart(tmp_path):
+    from backend.storage.sqlite_journal import SQLiteJournal
+    from backend.services.telemetry_service import TelemetryService
+    path = str(tmp_path / "traces.sqlite3")
+    first = TelemetryService(SQLiteJournal(path))
+    first.record("mission-export", "test_event", "test", {"value": 42})
+    second = TelemetryService(SQLiteJournal(path))
+    trace = second.export()["mission-export"]
+    assert len(trace) == 1
+    assert trace[0]["sequence"] == 1
+    assert trace[0]["payload"] == {"value": 42}
+
+
+def test_sse_reconnect_cursor_and_terminal_event():
+    from fastapi.testclient import TestClient
+    from backend.api.main import app
+    from backend.api.dependencies import get_telemetry_service
+    client=TestClient(app)
+    ident=client.post('/missions',json={'mission_text':'Go to target'}).json()['mission_id']
+    telemetry=get_telemetry_service()
+    telemetry.record(ident,'robot_state','test',{'robot_x':0,'robot_y':0,'simulation_time_seconds':0})
+    last=telemetry.record(ident,'mission_completed','test',{})
+    response=client.get('/missions/'+ident+'/stream',headers={'Last-Event-ID':str(last.sequence-1)})
+    assert response.status_code==200
+    assert response.headers['content-type'].startswith('text/event-stream')
+    assert f'id: {last.sequence}\n' in response.text
+    assert 'event: terminal' in response.text
+    assert 'robot_state' not in response.text
+    assert client.get('/missions/'+ident+'/stream',headers={'Last-Event-ID':'invalid'}).status_code==422
+
+
+def test_sse_rerun_does_not_close_on_previous_terminal_event(monkeypatch):
+    from threading import Thread,Event
+    from fastapi.testclient import TestClient
+    from backend.api.main import app
+    from backend.api.dependencies import get_telemetry_service
+    client=TestClient(app)
+    ident=client.post('/missions',json={'mission_text':'Go to target'}).json()['mission_id']
+    telemetry=get_telemetry_service();old=telemetry.record(ident,'mission_completed','test',{})
+    read=Event();original=telemetry.get_events_for_mission
+    def snapshot(mission):
+        result=original(mission);read.set();return result
+    monkeypatch.setattr(telemetry,'get_events_for_mission',snapshot)
+    def new_run():
+        assert read.wait(5)
+        telemetry.record(ident,'robot_state','test',{'robot_x':1,'robot_y':2})
+        telemetry.record(ident,'mission_completed','test',{})
+    thread=Thread(target=new_run);thread.start()
+    response=client.get('/missions/'+ident+'/stream',params={'after_sequence':old.sequence,'await_new_run':'true'})
+    thread.join(5)
+    assert response.status_code==200 and 'robot_state' in response.text
+    assert f'id: {old.sequence}\n' not in response.text

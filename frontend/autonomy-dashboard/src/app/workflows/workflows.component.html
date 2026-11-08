@@ -1,0 +1,48 @@
+<section class="border border-shell-border bg-shell-surface p-5 mt-6" aria-label="Experiment review">
+ <div class="flex flex-wrap justify-between gap-3 mb-4">
+  <div><p class="text-xs uppercase tracking-widest text-shell-muted">Experiment control</p><h2 class="text-xl mt-1">Review. Run. Inspect.</h2></div>
+  <span class="text-xs text-shell-muted">Local operator workspace · imported inference</span>
+ </div>
+ <p class="text-sm text-shell-muted mb-4">Import a saved model report, review its exact request, then approve one bounded simulation run. This workspace does not make a live model call.</p>
+ <div class="flex flex-wrap gap-3 items-end">
+  <label class="text-xs">Operator token<input type="password" autocomplete="off" [(ngModel)]="token" class="block bg-shell-raised border border-shell-border p-2 mt-1" /></label>
+  <button type="button" (click)="connect()" [disabled]="busy || !token" class="border border-shell-border p-2 text-sm">Load history</button>
+  <label class="text-xs">Saved inference report<input type="file" accept=".json,application/json" [disabled]="busy || !token" (change)="importFile($event)" class="block mt-1 text-xs" /></label>
+ </div>
+ <details class="mt-3"><summary class="text-xs cursor-pointer">Or paste report JSON</summary><label class="block text-xs mt-3">Inference report JSON<textarea [(ngModel)]="reportText" rows="5" class="block w-full bg-shell-raised border border-shell-border p-2 mt-1 font-mono"></textarea></label><button type="button" (click)="importText()" [disabled]="busy || !token || !reportText.trim()" class="border border-shell-border px-3 py-2 text-sm mt-2">Import pasted report</button></details>
+ <p class="text-xs text-shell-muted mt-3">Token stays in this page’s memory. Reviewer names are operator-provided labels, not verified individual identities. Public demo access is disabled.</p>
+ @if(error){<p role="alert" class="text-red-400 text-sm mt-3">{{error}}</p>}
+ @if(busy){<p role="status" class="text-sm mt-3 text-amber-300">Processing request…</p>}
+ <div class="grid lg:grid-cols-[240px_1fr] gap-5 mt-5">
+  <nav aria-label="Workflow history" class="space-y-2">
+   @for(entry of entries;track entry.id){<button type="button" (click)="open(entry.id)" [disabled]="busy" class="text-left block w-full border border-shell-border p-3 text-xs"><span class="block text-amber-300">{{entry.status}}</span><span class="font-mono">{{entry.id.slice(0,12)}}</span><span class="block text-shell-muted">{{entry.created_at * 1000 | date:'short'}}</span></button>}
+   @if(!entries.length){<p class="text-sm text-shell-muted">Load history or import a report to begin.</p>}
+  </nav>
+  @if(selected){
+   <div class="min-w-0 space-y-4">
+    <div class="flex flex-wrap justify-between gap-3"><h3 class="text-lg">{{selected.status}}</h3><div class="flex gap-3 text-xs"><button (click)="open(selected.id)" [disabled]="busy">Refresh</button><button (click)="download()">Export evidence</button></div></div>
+    <div class="grid sm:grid-cols-3 gap-3 text-sm">
+     <div class="border border-shell-border p-3"><span class="block text-xs text-shell-muted">Scenarios</span>{{selected.body.arguments.scenario_count}} / {{selected.policy.max_scenarios}}</div>
+     <div class="border border-shell-border p-3"><span class="block text-xs text-shell-muted">Seed</span>{{selected.body.arguments.seed}}</div>
+     <div class="border border-shell-border p-3"><span class="block text-xs text-shell-muted">Minimum success</span>{{selected.body.arguments.minimum_success_rate | percent}}</div>
+    </div>
+    <p class="text-xs break-all text-shell-muted">Model: {{selected.body.source.model_id}}<br>Revision: {{selected.body.source.revision}}<br>Approval digest: {{selected.digest}}</p>
+    @if(selected.status==='awaiting_approval'){
+     <label class="text-xs block">Reviewer label<input [(ngModel)]="actor" maxlength="100" class="block bg-shell-raised border border-shell-border p-2 mt-1" /></label>
+     <div class="flex flex-wrap gap-3 items-end"><button (click)="approve()" [disabled]="busy || !actor.trim()" class="bg-amber-400 text-black px-4 py-2 text-sm">Approve exact request</button><label class="text-xs">Rejection reason<input [(ngModel)]="reason" maxlength="500" class="block bg-shell-raised border border-shell-border p-2 mt-1" /></label><button (click)="reject()" [disabled]="busy || !actor.trim() || !reason.trim()" class="border border-shell-border p-2 text-sm">Reject</button></div>
+    }
+    @if(selected.status==='approved'){<button (click)="execute()" [disabled]="busy" class="bg-amber-400 text-black px-4 py-2 text-sm">Run approved experiment</button>}
+    <button (click)="checkpoint()" [disabled]="busy || !['awaiting_approval','approved','completed'].includes(selected.status)" class="border border-shell-border px-3 py-2 text-sm">{{selected.status==='approved'?'Resume LangGraph execution':'Inspect LangGraph checkpoint'}}</button>
+    @if(selected.graph){<p class="text-xs text-shell-muted">LangGraph · {{selected.graph.paused?'Paused for recorded approval':'Graph finished'}} · {{selected.graph.next_nodes.join(', ')}}</p>}
+    @if(selected.error){<p role="alert" class="text-red-400">{{selected.error}}</p>}
+    @if(selected.report){
+     <div class="border border-shell-border p-4"><h4 class="text-sm mb-2">Experiment outcome</h4><div class="flex justify-between text-sm"><span>{{selected.report.experiment.summary.success_count}} completed</span><span>{{selected.report.experiment.summary.failure_count}} failed</span></div>
+      <div class="h-3 bg-red-400/60 mt-3" role="img" [attr.aria-label]="'Completion rate ' + selected.report.experiment.summary.success_rate"><div class="h-full bg-emerald-400" [style.width.%]="selected.report.experiment.summary.success_rate * 100"></div></div>
+      <p class="text-xs mt-3 text-shell-muted">Evaluation {{selected.report.experiment.evaluation_passed ? 'passed' : 'failed'}} · {{selected.report.tool_calls}} tool call · {{selected.report.elapsed_seconds | number:'1.2-2'}} s</p>
+      <details class="mt-3"><summary class="text-xs">Raw experiment report</summary><pre class="overflow-auto text-xs mt-2">{{selected.report.experiment | json}}</pre></details></div>
+    }
+    <details><summary class="text-sm cursor-pointer">Ordered audit timeline · {{selected.events.length}} events</summary><ol class="mt-3 space-y-2">@for(event of selected.events;track event.sequence){<li class="text-xs border-l border-shell-border pl-3"><span class="text-amber-300">{{event.sequence}} · {{event.event}}</span><span class="text-shell-muted ml-3">{{event.time * 1000 | date:'mediumTime'}}</span><pre class="overflow-auto mt-1">{{event.payload | json}}</pre></li>}</ol></details>
+   </div>
+  }
+ </div>
+</section>

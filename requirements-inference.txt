@@ -1,0 +1,5 @@
+# Optional GPU environment only. Record resolved versions after live validation.
+# PyTorch is supplied by the selected official Runpod image.
+transformers>=4.44,<5
+accelerate>=1,<2
+safetensors>=0.4,<1

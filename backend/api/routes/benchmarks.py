@@ -1,5 +1,6 @@
 """Benchmark endpoints."""
 
+from backend.api.simulation_gate import simulation_slot
 from fastapi import APIRouter, Depends
 
 from backend.api.dependencies import get_benchmark_service
@@ -15,4 +16,5 @@ def run_benchmark(
     benchmark_service: BenchmarkService = Depends(get_benchmark_service),
 ) -> BenchmarkSummary:
     """Run benchmark: generate scenarios, execute pipeline per scenario, return summary."""
-    return benchmark_service.run(body)
+    with simulation_slot():
+        return benchmark_service.run(body)

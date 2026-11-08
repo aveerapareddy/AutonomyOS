@@ -90,7 +90,7 @@ def plan_path(
     """
     start_rc = grid.world_to_grid(start_x, start_y)
     goal_rc = grid.world_to_grid(goal_x, goal_y)
-    if start_rc == goal_rc:
+    if start_rc == goal_rc and not grid.is_blocked(*start_rc):
         x, y = grid.grid_to_world(start_rc[0], start_rc[1])
         return NavigationResult(
             path_found=True,

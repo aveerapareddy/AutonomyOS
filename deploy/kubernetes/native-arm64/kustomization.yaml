@@ -1,0 +1,6 @@
+resources:
+  - ../base
+images:
+  - name: autonomyos
+    newName: autonomyos
+    newTag: completion-arm64

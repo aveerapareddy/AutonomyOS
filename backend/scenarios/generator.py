@@ -39,7 +39,15 @@ def _pick_start(
             continue
         theta = rng.uniform(0.0, 2.0 * math.pi)
         return (x, y, theta)
-    return (0.0, 0.0, 0.0)
+    # Deterministic bounded fallback; never fabricate a blocked/out-of-bounds start.
+    min_x,max_x,min_y,max_y=bounds
+    for ix in range(17):
+        for iy in range(17):
+            x=min_x+1+ix*(max_x-min_x-2)/16
+            y=min_y+1+iy*(max_y-min_y-2)/16
+            if _clear_of_obstacles(x,y,obstacle_positions) and not (abs(x-target_x)<START_TARGET_MARGIN and abs(y-target_y)<START_TARGET_MARGIN):
+                return (x,y,0.0)
+    raise ValueError('No valid robot start found within the bounded sampling budget')
 
 
 def generate_scenarios(
@@ -48,6 +56,10 @@ def generate_scenarios(
     bounds: tuple = DEFAULT_BOUNDS,
 ) -> List[ScenarioConfig]:
     """Generate N warehouse-like scenarios. Deterministic for same seed."""
+    if isinstance(count,bool) or not isinstance(count,int) or not 0<=count<=100:
+        raise ValueError('Scenario count must be an integer in 0..100')
+    if len(bounds)!=4 or not all(math.isfinite(v) for v in bounds):raise ValueError('Bounds must be finite')
+    if not (4<=bounds[1]-bounds[0]<=40 and 4<=bounds[3]-bounds[2]<=40):raise ValueError('Generated-world dimensions must be 4..40 meters')
     rng = random.Random(seed)
     min_x, max_x, min_y, max_y = bounds
     scenarios: List[ScenarioConfig] = []
@@ -65,9 +77,12 @@ def generate_scenarios(
 
         target_x = rng.uniform(min_x + 1, max_x - 1)
         target_y = rng.uniform(min_y + 1, max_y - 1)
-        while not _clear_of_obstacles(target_x, target_y, obstacle_positions):
+        for _ in range(512):
+            if _clear_of_obstacles(target_x,target_y,obstacle_positions):break
             target_x = rng.uniform(min_x + 1, max_x - 1)
             target_y = rng.uniform(min_y + 1, max_y - 1)
+        else:
+            raise ValueError('No clear target found within the bounded sampling budget')
 
         start_x, start_y, start_theta = _pick_start(
             rng, bounds, obstacle_positions, target_x, target_y

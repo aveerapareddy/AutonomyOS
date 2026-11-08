@@ -1,6 +1,9 @@
 """Shared FastAPI dependencies for services."""
 
 from typing import Optional
+from functools import lru_cache
+from backend.core.config import get_settings
+from backend.storage.sqlite_journal import SQLiteJournal
 
 from backend.services.benchmark_service import BenchmarkService
 from backend.services.mission_service import MissionService
@@ -10,7 +13,7 @@ from backend.services.replay_service import ReplayService
 from backend.services.telemetry_service import TelemetryService
 from backend.storage.repositories.mission_repository import InMemoryMissionRepository
 
-_mission_repository: Optional[InMemoryMissionRepository] = None
+_mission_repository: Optional[InMemoryMissionRepository | SQLiteJournal] = None
 _telemetry_service: Optional[TelemetryService] = None
 
 
@@ -47,7 +50,7 @@ def get_mission_service() -> MissionService:
     """Provide mission service. Swap repository for SQLite later."""
     global _mission_repository
     if _mission_repository is None:
-        _mission_repository = InMemoryMissionRepository()
+        _mission_repository = get_journal() or InMemoryMissionRepository()
     return MissionService(repository=_mission_repository)
 
 
@@ -55,5 +58,11 @@ def get_telemetry_service() -> TelemetryService:
     """Provide telemetry service. Replace backing store later for SQLite."""
     global _telemetry_service
     if _telemetry_service is None:
-        _telemetry_service = TelemetryService()
+        _telemetry_service = TelemetryService(journal=get_journal())
     return _telemetry_service
+
+
+@lru_cache
+def get_journal() -> SQLiteJournal | None:
+    path = get_settings().database_path
+    return SQLiteJournal(path) if path else None

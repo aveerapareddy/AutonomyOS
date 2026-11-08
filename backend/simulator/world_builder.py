@@ -24,6 +24,7 @@ class WorldLayoutSpec:
     obstacle_positions: List[Tuple[float, float]]
     obstacle_types: List[str]
     target_position: Tuple[float, float]
+    obstacle_half_extents: List[Tuple[float, float, float]] | None = None
 
 
 @dataclass
@@ -60,8 +61,8 @@ _BLOCK_XY = (1.0, 1.0)
 def get_world_layout() -> Tuple[Tuple[float, float, float, float], List[WorldObject], WorldObject]:
     """Return (world_bounds, obstacle_objects, target_object) for planning. No PyBullet."""
     obstacle_objects = [
-        WorldObject(object_id="obstacle_0", object_type="wall", x=_WALL_LEFT_XY[0], y=_WALL_LEFT_XY[1]),
-        WorldObject(object_id="obstacle_1", object_type="wall", x=_WALL_RIGHT_XY[0], y=_WALL_RIGHT_XY[1]),
+        WorldObject(object_id="obstacle_0", object_type="wall", x=_WALL_LEFT_XY[0], y=_WALL_LEFT_XY[1], half_extents=(_WALL_HALF_X, _WALL_HALF_Y, _WALL_HALF_Z)),
+        WorldObject(object_id="obstacle_1", object_type="wall", x=_WALL_RIGHT_XY[0], y=_WALL_RIGHT_XY[1], half_extents=(_WALL_HALF_X, _WALL_HALF_Y, _WALL_HALF_Z)),
         WorldObject(object_id="obstacle_2", object_type="block", x=_BLOCK_XY[0], y=_BLOCK_XY[1]),
     ]
     target_object = WorldObject(object_id="target", object_type="target", x=_TARGET_XY[0], y=_TARGET_XY[1])
@@ -151,13 +152,15 @@ def _create_obstacles_from_spec(spec: WorldLayoutSpec) -> Tuple[List[int], List[
         types.extend(["obstacle"] * (len(spec.obstacle_positions) - len(types)))
     for i, (pos, typ) in enumerate(zip(spec.obstacle_positions, types)):
         x, y = pos
+        half = spec.obstacle_half_extents[i] if spec.obstacle_half_extents else _OBSTACLE_HALF_GENERIC
+        shape = pb.createCollisionShape(pb.GEOM_BOX, halfExtents=half)
         body_id = pb.createMultiBody(
             0,
             shape,
             basePosition=(x, y, half[2]),
         )
         ids_.append(body_id)
-        objects_.append(WorldObject(object_id=f"obstacle_{i}", object_type=typ, x=x, y=y))
+        objects_.append(WorldObject(object_id=f"obstacle_{i}", object_type=typ, x=x, y=y, half_extents=half))
     return ids_, objects_
 
 
@@ -196,7 +199,7 @@ def _create_obstacles() -> Tuple[List[int], List[WorldObject]]:
             basePosition=(_WALL_LEFT_XY[0], _WALL_LEFT_XY[1], _WALL_HALF_Z),
         )
     )
-    objects_.append(WorldObject(object_id="obstacle_0", object_type="wall", x=_WALL_LEFT_XY[0], y=_WALL_LEFT_XY[1]))
+    objects_.append(WorldObject(object_id="obstacle_0", object_type="wall", x=_WALL_LEFT_XY[0], y=_WALL_LEFT_XY[1], half_extents=(_WALL_HALF_X, _WALL_HALF_Y, _WALL_HALF_Z)))
     ids_.append(
         pb.createMultiBody(
             0,
@@ -204,7 +207,7 @@ def _create_obstacles() -> Tuple[List[int], List[WorldObject]]:
             basePosition=(_WALL_RIGHT_XY[0], _WALL_RIGHT_XY[1], _WALL_HALF_Z),
         )
     )
-    objects_.append(WorldObject(object_id="obstacle_1", object_type="wall", x=_WALL_RIGHT_XY[0], y=_WALL_RIGHT_XY[1]))
+    objects_.append(WorldObject(object_id="obstacle_1", object_type="wall", x=_WALL_RIGHT_XY[0], y=_WALL_RIGHT_XY[1], half_extents=(_WALL_HALF_X, _WALL_HALF_Y, _WALL_HALF_Z)))
     block = pb.createCollisionShape(pb.GEOM_BOX, halfExtents=_OBSTACLE_HALF)
     ids_.append(
         pb.createMultiBody(

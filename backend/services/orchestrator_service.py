@@ -10,31 +10,21 @@ from backend.core.constants import (
     TELEMETRY_SOURCE_PERCEPTION_AGENT,
     TELEMETRY_SOURCE_PLANNER,
 )
-from backend.schemas.execution import MissionExecutionSummary
+from backend.schemas.execution import MissionExecutionSummary, SceneObstacle
+from backend.schemas.planner import MissionPlan, MissionPlanRequest
 from backend.schemas.telemetry import TelemetryEventType
 from backend.schemas.world import WorldObject
 from backend.services.execution_service import run_sim_execution
 from backend.services.mission_service import MissionService
+from backend.services.navigation_constraints import grid_inflation_cells
+from backend.services.planner_service import PlannerService
+from backend.services.target_selection import select_navigation_goal
 from backend.services.telemetry_service import TelemetryService
+from backend.simulator.execution_engine import ExecutionConfig
 from backend.simulator.grid_map import build_occupancy_grid
 from backend.simulator.world_builder import WorldLayoutSpec, get_world_layout
 
 DEFAULT_ROBOT_START: Tuple[float, float, float] = (0.0, 0.0, 0.0)
-
-
-def _rule_based_plan(mission_text: str) -> List[str]:
-    """Derive plan steps from mission text. No LLM."""
-    text_lower = mission_text.lower().strip()
-    steps: List[str] = []
-    if "red" in text_lower or "target" in text_lower or not text_lower:
-        steps.append("Select target: target")
-    else:
-        steps.append("Select target: target")
-    if "avoid" in text_lower:
-        steps.append("Navigate with obstacle avoidance")
-    else:
-        steps.append("Navigate to target")
-    return steps
 
 
 class OrchestratorService:
@@ -49,12 +39,18 @@ class OrchestratorService:
         ] = None,
         robot_start_provider: Optional[Callable[[], Tuple[float, float, float]]] = None,
         execution_world_layout_provider: Optional[Callable[[], WorldLayoutSpec]] = None,
+        planner_service: Optional[PlannerService] = None,
+        execution_config: Optional[ExecutionConfig] = None,
+        geometry_aware: bool = False,
     ) -> None:
         self._mission_service = mission_service
         self._telemetry_service = telemetry_service
         self._get_layout = world_layout_provider or get_world_layout
         self._get_robot_start = robot_start_provider
         self._get_execution_world_layout = execution_world_layout_provider
+        self._geometry_aware = geometry_aware
+        self._execution_config = execution_config
+        self._planner = planner_service or PlannerService()
 
     def execute(self, mission_id: str) -> Optional[MissionExecutionSummary]:
         """Run pipeline for the mission. Returns None if mission not found."""
@@ -62,38 +58,98 @@ class OrchestratorService:
         if mission is None:
             return None
 
-        plan_steps = _rule_based_plan(mission.mission_text)
+        plan_response = self._planner.plan(MissionPlanRequest(mission_text=mission.mission_text))
+        mission_plan = plan_response.plan
+        plan_steps = list(mission_plan.plan_steps)
+        inflation = grid_inflation_cells(list(mission_plan.constraints))
+
         self._telemetry_service.record(
             mission_id,
             TelemetryEventType.PLAN_GENERATED,
             TELEMETRY_SOURCE_PLANNER,
-            {"plan_steps": plan_steps},
+            {
+                "planner_mode": mission_plan.planner_mode,
+                "goal_type": mission_plan.goal_type,
+                "target_label": mission_plan.target_label,
+                "constraints": list(mission_plan.constraints),
+                "plan_steps": plan_steps,
+                "grid_inflation_cells": inflation,
+            },
         )
 
         world_bounds, obstacle_objects, target_object = self._get_layout()
+        viz_bounds: tuple[float, float, float, float] = (
+            float(world_bounds[0]),
+            float(world_bounds[1]),
+            float(world_bounds[2]),
+            float(world_bounds[3]),
+        )
+        viz_obstacles = [
+            SceneObstacle(x=float(o.x), y=float(o.y), half_extents=o.half_extents) for o in obstacle_objects
+        ]
         perception_result = perceive_from_objects(obstacle_objects, target_object)
 
-        if not perception_result.detected_targets:
+        if not perception_result.detected_targets and not perception_result.detected_obstacles:
             self._telemetry_service.record(
                 mission_id,
                 TelemetryEventType.MISSION_FAILED,
                 TELEMETRY_SOURCE_ORCHESTRATOR_SERVICE,
-                {"reason": "no_target_found"},
+                {
+                    "reason": "no_target_found",
+                    "planned_target_label": mission_plan.target_label,
+                },
             )
             return self._summary(
+                mission_plan=mission_plan,
                 mission_id=mission_id,
                 status="failed",
                 plan_steps=plan_steps,
                 path_found=False,
+                grid_inflation_cells=inflation,
                 message="No target found",
+                world_bounds=viz_bounds,
+                obstacles=viz_obstacles,
             )
 
-        target = perception_result.detected_targets[0]
+        goal, selection_error = select_navigation_goal(
+            perception_result.detected_targets,
+            perception_result.detected_obstacles,
+            mission_plan.target_label,
+        )
+        if goal is None:
+            self._telemetry_service.record(
+                mission_id,
+                TelemetryEventType.MISSION_FAILED,
+                TELEMETRY_SOURCE_ORCHESTRATOR_SERVICE,
+                {
+                    "reason": "target_selection_failed",
+                    "detail": selection_error,
+                    "planned_target_label": mission_plan.target_label,
+                },
+            )
+            return self._summary(
+                mission_plan=mission_plan,
+                mission_id=mission_id,
+                status="failed",
+                plan_steps=plan_steps,
+                path_found=False,
+                grid_inflation_cells=inflation,
+                message=selection_error or "Target selection failed",
+                world_bounds=viz_bounds,
+                obstacles=viz_obstacles,
+            )
+
         self._telemetry_service.record(
             mission_id,
             TelemetryEventType.PERCEPTION_COMPLETED,
             TELEMETRY_SOURCE_PERCEPTION_AGENT,
-            {"target_id": target.object_id, "target_x": target.x, "target_y": target.y},
+            {
+                "target_id": goal.object_id,
+                "target_x": goal.x,
+                "target_y": goal.y,
+                "object_type": goal.object_type,
+                "planned_target_label": mission_plan.target_label,
+            },
         )
 
         robot_start = (
@@ -101,13 +157,22 @@ class OrchestratorService:
         )
         start_x, start_y, _ = robot_start
         obstacle_positions = [(o.x, o.y) for o in obstacle_objects]
-        grid = build_occupancy_grid(world_bounds, obstacle_positions)
+        if self._geometry_aware:
+            obstacle_positions = []
+            for o in obstacle_objects:
+                hx, hy, _ = o.half_extents
+                # Include boundary samples and all occupied grid-cell centers.
+                import math
+                for col in range(math.floor((o.x-hx-world_bounds[0])/.25), math.ceil((o.x+hx-world_bounds[0])/.25)+1):
+                    for row in range(math.floor((o.y-hy-world_bounds[2])/.25), math.ceil((o.y+hy-world_bounds[2])/.25)+1):
+                        obstacle_positions.append((world_bounds[0]+(col+.5)*.25,world_bounds[2]+(row+.5)*.25))
+        grid = build_occupancy_grid(world_bounds, obstacle_positions, inflation_radius=inflation)
         nav_result = plan_path(
             grid,
             start_x,
             start_y,
-            target.x,
-            target.y,
+            goal.x,
+            goal.y,
         )
 
         if not nav_result.path_found:
@@ -118,27 +183,45 @@ class OrchestratorService:
                 {"reason": "no_path_found", "message": nav_result.message},
             )
             return self._summary(
+                mission_plan=mission_plan,
                 mission_id=mission_id,
                 status="failed",
                 plan_steps=plan_steps,
-                detected_target={"x": target.x, "y": target.y, "object_type": target.object_type},
+                detected_target={"x": goal.x, "y": goal.y, "object_type": goal.object_type},
                 path_found=False,
+                grid_inflation_cells=inflation,
                 message=nav_result.message or "No path found",
+                world_bounds=viz_bounds,
+                obstacles=viz_obstacles,
             )
 
         path_length_raw = nav_result.path_length_raw
+        path_length_simplified = nav_result.path_length
 
         self._telemetry_service.record(
             mission_id,
             TelemetryEventType.PATH_COMPUTED,
             TELEMETRY_SOURCE_NAVIGATION_AGENT,
-            {"waypoint_count": nav_result.path_length},
+            {
+                "waypoint_count": path_length_simplified,
+                "path_length_raw": path_length_raw,
+                "path_length_simplified": path_length_simplified,
+                "grid_inflation_cells": inflation,
+                "constraints_applied": list(mission_plan.constraints),
+            },
         )
 
         execution_world_layout = (
             self._get_execution_world_layout()
             if self._get_execution_world_layout
             else None
+        )
+        self._telemetry_service.record(
+            mission_id, "scene_ready", TELEMETRY_SOURCE_ORCHESTRATOR_SERVICE,
+            {"world_bounds": viz_bounds,
+             "obstacles": [o.model_dump(mode="json") for o in viz_obstacles],
+             "target": {"x": goal.x, "y": goal.y},
+             "waypoints": [w.model_dump(mode="json") for w in nav_result.waypoints]},
         )
         execution_result = None
         try:
@@ -148,6 +231,7 @@ class OrchestratorService:
                 self._telemetry_service,
                 robot_start=robot_start,
                 world_layout=execution_world_layout,
+                **({"execution_config": self._execution_config} if self._execution_config is not None else {}),
             )
         except (RuntimeError, ImportError) as e:
             self._telemetry_service.record(
@@ -158,15 +242,20 @@ class OrchestratorService:
             )
             events = self._telemetry_service.get_events_for_mission(mission_id)
             return self._summary(
+                mission_plan=mission_plan,
                 mission_id=mission_id,
                 status="failed",
                 plan_steps=plan_steps,
-                detected_target={"x": target.x, "y": target.y, "object_type": target.object_type},
+                detected_target={"x": goal.x, "y": goal.y, "object_type": goal.object_type},
                 path_found=True,
-                waypoint_count=nav_result.path_length,
+                waypoint_count=path_length_simplified,
                 path_length_raw=path_length_raw,
+                path_length_simplified=path_length_simplified,
+                grid_inflation_cells=inflation,
                 telemetry_count=len(events),
                 message=f"Execution failed: {e}",
+                world_bounds=viz_bounds,
+                obstacles=viz_obstacles,
             )
 
         if execution_result.execution_status == "failed":
@@ -178,44 +267,62 @@ class OrchestratorService:
             )
             events = self._telemetry_service.get_events_for_mission(mission_id)
             return self._summary(
+                mission_plan=mission_plan,
                 mission_id=mission_id,
                 status="failed",
                 plan_steps=plan_steps,
-                detected_target={"x": target.x, "y": target.y, "object_type": target.object_type},
+                detected_target={"x": goal.x, "y": goal.y, "object_type": goal.object_type},
                 path_found=True,
-                waypoint_count=nav_result.path_length,
+                waypoint_count=path_length_simplified,
                 path_length_raw=path_length_raw,
+                path_length_simplified=path_length_simplified,
+                grid_inflation_cells=inflation,
                 telemetry_count=len(events),
                 message=execution_result.message,
                 execution_steps=execution_result.execution_steps,
+                simulator_steps=execution_result.simulator_steps,
                 final_robot_position=execution_result.final_robot_position,
                 execution_status=execution_result.execution_status,
+                world_bounds=viz_bounds,
+                obstacles=viz_obstacles,
             )
 
         self._telemetry_service.record(
             mission_id,
             TelemetryEventType.MISSION_COMPLETED,
             TELEMETRY_SOURCE_ORCHESTRATOR_SERVICE,
-            {"waypoint_count": nav_result.path_length},
+            {
+                "waypoint_count": path_length_simplified,
+                "path_length_raw": path_length_raw,
+                "path_length_simplified": path_length_simplified,
+                "planner_mode": mission_plan.planner_mode,
+            },
         )
 
         events = self._telemetry_service.get_events_for_mission(mission_id)
         return self._summary(
+            mission_plan=mission_plan,
             mission_id=mission_id,
             status="completed",
             plan_steps=plan_steps,
-            detected_target={"x": target.x, "y": target.y, "object_type": target.object_type},
+            detected_target={"x": goal.x, "y": goal.y, "object_type": goal.object_type},
             path_found=True,
-            waypoint_count=nav_result.path_length,
+            waypoint_count=path_length_simplified,
             path_length_raw=path_length_raw,
+            path_length_simplified=path_length_simplified,
+            grid_inflation_cells=inflation,
             telemetry_count=len(events),
             execution_steps=execution_result.execution_steps,
+            simulator_steps=execution_result.simulator_steps,
             final_robot_position=execution_result.final_robot_position,
             execution_status=execution_result.execution_status,
+            world_bounds=viz_bounds,
+            obstacles=viz_obstacles,
         )
 
     def _summary(
         self,
+        mission_plan: MissionPlan,
         mission_id: str,
         status: str,
         plan_steps: List[str],
@@ -223,25 +330,40 @@ class OrchestratorService:
         detected_target: Optional[dict] = None,
         waypoint_count: int = 0,
         path_length_raw: Optional[int] = None,
+        path_length_simplified: Optional[int] = None,
+        grid_inflation_cells: Optional[int] = None,
         telemetry_count: Optional[int] = None,
         message: Optional[str] = None,
         execution_steps: Optional[list] = None,
+        simulator_steps: int = 0,
         final_robot_position: Optional[dict] = None,
         execution_status: Optional[str] = None,
+        world_bounds: Optional[tuple[float, float, float, float]] = None,
+        obstacles: Optional[List[SceneObstacle]] = None,
     ) -> MissionExecutionSummary:
         if telemetry_count is None:
             telemetry_count = len(self._telemetry_service.get_events_for_mission(mission_id))
+        pl_simplified = path_length_simplified if path_length_simplified is not None else waypoint_count
         return MissionExecutionSummary(
             mission_id=mission_id,
             status=status,
             plan_steps=plan_steps,
+            planner_mode=mission_plan.planner_mode,
+            goal_type=mission_plan.goal_type,
+            target_label=mission_plan.target_label,
+            constraints=list(mission_plan.constraints),
             detected_target=detected_target,
+            world_bounds=world_bounds,
+            obstacles=list(obstacles or []),
             path_found=path_found,
             waypoint_count=waypoint_count,
             path_length_raw=path_length_raw,
+            path_length_simplified=pl_simplified,
+            grid_inflation_cells=grid_inflation_cells,
             telemetry_count=telemetry_count,
             message=message,
             execution_steps=execution_steps or [],
+            simulator_steps=simulator_steps,
             final_robot_position=final_robot_position,
             execution_status=execution_status,
         )

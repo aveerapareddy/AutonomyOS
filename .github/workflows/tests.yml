@@ -1,0 +1,22 @@
+name: CPU reference validation
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r backend/requirements-demo.txt -r requirements-usd.txt pytest
+      - run: python -c "import pybullet; from pxr import Usd"
+      - run: python -m pytest backend/tests -q
+      - run: python -m scripts.run_experiment --output artifacts/a --count 10 --seed 42
+      - run: python -m scripts.run_experiment --output artifacts/b --count 10 --seed 42 --compare artifacts/a/report.json
+      - run: python -m scripts.run_evaluation_suite
+      - run: python -m scripts.export_scenario_usd artifacts/warehouse.usda
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: experiment-evidence
+          path: artifacts/

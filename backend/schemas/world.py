@@ -11,3 +11,5 @@ class WorldObject:
     object_type: str
     x: float
     y: float
+
+    half_extents: tuple[float, float, float] = (0.5, 0.5, 0.5)

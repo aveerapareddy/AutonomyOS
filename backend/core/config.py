@@ -20,6 +20,16 @@ class Settings(BaseSettings):
     api_host: str = "0.0.0.0"
     api_port: int = 8000
     log_level: str = "INFO"
+    database_path: str = ""
+    frontend_directory: str = ""
+    public_demo: bool = False
+    workflow_directory: str = ""
+    operator_token: str = ""
+    operator_accounts_json: str = ""
+    operations_directory: str = ""
+    traces_directory: str = ""
+    semantic_python: str = ""
+    semantic_index: str = ""
 
 
 @lru_cache

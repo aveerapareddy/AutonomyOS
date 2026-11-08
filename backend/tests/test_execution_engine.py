@@ -25,6 +25,7 @@ def test_waypoint_executor_reaches_target() -> None:
         ]
         result = executor.execute(waypoints)
         assert result.execution_status == "completed"
+        assert result.simulator_steps > 3
         assert len(result.execution_steps) == 3
         assert all(s.reached for s in result.execution_steps)
         assert result.final_robot_position is not None
@@ -60,6 +61,7 @@ def test_waypoint_executor_failure_max_steps() -> None:
         executor = WaypointExecutor(env, "m3", telemetry, config=config)
         waypoints = [Waypoint(x=10.0, y=10.0)]
         result = executor.execute(waypoints)
+        assert result.simulator_steps == 2
         assert result.execution_status == "failed"
         assert result.message is not None
         assert "max steps" in result.message.lower() or "exceeded" in result.message.lower()
@@ -67,5 +69,35 @@ def test_waypoint_executor_failure_max_steps() -> None:
         events = telemetry.get_events_for_mission("m3")
         event_types = [e.event_type for e in events]
         assert "execution_failed" in event_types
+    finally:
+        env.shutdown()
+
+
+def test_sampled_state_is_simulator_pose():
+    pytest.importorskip("pybullet")
+    env = SimulationEnvironment(use_gui=False)
+    try:
+        telemetry = TelemetryService()
+        config = ExecutionConfig(max_steps_per_waypoint=4, telemetry_interval_steps=1)
+        WaypointExecutor(env, "sampled", telemetry, config).execute([Waypoint(x=10, y=0)])
+        frames = [e for e in telemetry.get_events_for_mission("sampled") if e.event_type == "robot_state"]
+        assert [e.payload["simulation_step"] for e in frames] == [1, 2, 3, 4]
+        pose = env.get_robot_pose()
+        assert frames[-1].payload["robot_x"] == pytest.approx(pose.x)
+        assert frames[-1].payload["robot_y"] == pytest.approx(pose.y)
+        assert frames[-1].payload["robot_theta"] == pytest.approx(pose.theta)
+        assert frames[-1].payload["backend"] == "pybullet"
+    finally:
+        env.shutdown()
+
+
+def test_recorded_simulation_clock_uses_configured_timestep():
+    env=SimulationEnvironment(use_gui=False,step_dt=0.01)
+    try:
+        telemetry=TelemetryService()
+        WaypointExecutor(env,'clock',telemetry,ExecutionConfig(telemetry_interval_steps=3)).execute([Waypoint(x=.5,y=0)])
+        events=[e for e in telemetry.get_events_for_mission('clock') if e.event_type=='robot_state']
+        assert events
+        assert all(e.payload['simulation_time_seconds']==pytest.approx(e.payload['simulation_step']*.01) for e in events)
     finally:
         env.shutdown()

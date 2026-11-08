@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "label_origin": "Hand-authored by project implementer; small transparent smoke dataset, not independent domain-expert ground truth.",
+  "development": [
+    {"id":"dev-1","query":"How is waypoint tolerance and maximum steps configured?","relevant":["execution"]},
+    {"id":"dev-2","query":"How are workflow approvals tied to the proposal digest?","relevant":["workflow"]},
+    {"id":"dev-3","query":"What checks validate an evidence archive?","relevant":["evidence"]},
+    {"id":"dev-4","query":"Where is seeded scenario generation defined?","relevant":["scenario"]}
+  ],
+  "held_out": [
+    {"id":"held-1","query":"How are concurrent SQLite event sequence numbers allocated?","relevant":["journal"]},
+    {"id":"held-2","query":"Does moving the robot use kinematic pose reset?","relevant":["physics"]},
+    {"id":"held-3","query":"Which stage metadata records meters and Z up in USD export?","relevant":["usd"]},
+    {"id":"held-4","query":"How are the Hugging Face model revision and output tokens recorded?","relevant":["inference"]}
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "description": "Hand-authored navigation contract cases, not a statistical accuracy dataset or safety certification",
+  "cases": [
+    {"id":"clear", "start":[0,0,0], "target":[1,1], "obstacles":[], "expected_success":true},
+    {"id":"blocked-start", "start":[0,0,0], "target":[1,1], "obstacles":[[0,0]], "expected_success":false},
+    {"id":"blocked-target", "start":[0,0,0], "target":[1,1], "obstacles":[[1,1]], "expected_success":false},
+    {"id":"same-blocked-cell", "start":[0,0,0], "target":[0,0], "obstacles":[[0,0]], "expected_success":false}
+  ]
+}

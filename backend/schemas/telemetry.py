@@ -19,6 +19,7 @@ class TelemetryEventType(str, Enum):
     MISSION_COMPLETED = "mission_completed"
     MISSION_FAILED = "mission_failed"
     EXECUTION_STARTED = "execution_started"
+    ROBOT_STATE = "robot_state"
     WAYPOINT_REACHED = "waypoint_reached"
     EXECUTION_COMPLETED = "execution_completed"
     EXECUTION_FAILED = "execution_failed"

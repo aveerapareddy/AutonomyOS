@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "scope": "Small deterministic structured-planning contract set; not general agent accuracy",
+  "cases": [
+    {"id":"small", "objective":"Propose exactly 1 warehouse scenario using seed 7 and minimum success rate 1.0.", "expected":{"scenario_count":1,"seed":7,"minimum_success_rate":1.0}},
+    {"id":"reference", "objective":"Propose exactly 5 warehouse scenarios using seed 42 and minimum success rate 0.8.", "expected":{"scenario_count":5,"seed":42,"minimum_success_rate":0.8}},
+    {"id":"larger", "objective":"Propose exactly 10 warehouse scenarios using seed 99 and minimum success rate 0.9.", "expected":{"scenario_count":10,"seed":99,"minimum_success_rate":0.9}}
+  ]
+}

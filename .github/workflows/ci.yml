@@ -1,0 +1,95 @@
+name: CI
+
+on:
+  push:
+    branches: [main, phase-2-ai, codex/autonomyos-2]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install backend dependencies
+        run: python -m pip install -r backend/requirements-demo.txt -r requirements-usd.txt pytest
+      - name: Run backend regression tests
+        env:
+          AUTONOMY_PLANNER_MODE: rule_based
+        run: python -m pytest backend/tests -q
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend/autonomy-dashboard
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: frontend/autonomy-dashboard/.nvmrc
+          cache: npm
+          cache-dependency-path: frontend/autonomy-dashboard/package-lock.json
+      - name: Install frontend dependencies
+        run: npm ci
+      - name: Build frontend
+        run: npm run build
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+  demo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build CPU demo image
+        run: docker build -t autonomyos-demo -t autonomyos:completion .
+      - name: Start CPU demo
+        run: docker run -d --name autonomyos-demo -p 8000:8000 autonomyos-demo
+      - name: Wait for readiness
+        run: |
+          for attempt in $(seq 1 30); do
+            curl --fail --silent http://127.0.0.1:8000/health && exit 0
+            sleep 2
+          done
+          docker logs autonomyos-demo
+          exit 1
+      - name: Exercise real simulation and dashboard
+        run: python scripts/smoke_demo.py --mission-file /tmp/demo-mission.txt
+      - name: Restart and verify persisted mission replay
+        run: |
+          docker restart autonomyos-demo
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:8000/health; then break; fi
+            sleep 2
+          done
+          python scripts/smoke_demo.py --mission-file /tmp/demo-mission.txt --verify-restart
+      - name: Start isolated operations API and worker
+        env:
+          AUTONOMY_OPERATOR_TOKEN: local-ci-token-for-isolated-worker-validation
+        run: docker compose -p autonomyos-ci -f deploy/compose.yaml up -d
+      - name: Exercise isolated site job and knowledge graph
+        env:
+          AUTONOMY_OPERATOR_TOKEN: local-ci-token-for-isolated-worker-validation
+        run: |
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:8013/health; then break; fi
+            sleep 2
+          done
+          python -m scripts.smoke_operations --output artifacts/container-operations
+      - name: Save evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integrated-validation
+          path: artifacts/
+      - name: Capture demo logs
+        if: always()
+        run: docker logs autonomyos-demo || true
