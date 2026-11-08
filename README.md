@@ -8,6 +8,12 @@ Start with the [current architecture, coverage and measured limits](docs/COMPLET
 
 Verified optional components include pinned PyTorch/Hugging Face Nemotron inference on RTX, MiniLM semantic retrieval, OpenUSD round trips, Isaac Sim import/physics smoke and Newton CPU contact simulation. Live NIM, Cosmos generation, production GPU Kubernetes and physical safety remain unverified. Advanced Isaac robot/RTX results are reported separately and must not be inferred from the import smoke.
 
+## Actual application captures
+
+![Completed mission and simulation-time replay](docs/assets/mission-room.png)
+
+The [evidence graph](docs/assets/evidence-graph.png), [blocked-route failure](docs/assets/blocked-route.png), and [independent review checkpoint](docs/assets/proposal-review.png) show the same running application. These are captured results, not mockups. Exact parity with the unavailable original visual reference is unverified.
+
 ## Run locally
 
 Use Python 3.11 and Node 20. Install `backend/requirements-demo.txt`, `requirements-observability.txt` and the relevant optional requirements. Build the Angular application in `frontend/autonomy-dashboard` with `npm ci && npm run build`. Configure persistent data directories and an operator token outside source control; follow the runbook to start the API and separate worker. The browser interface is served at `/demo/`.
