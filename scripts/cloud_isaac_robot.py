@@ -24,6 +24,10 @@ if __name__=='__main__':
         print(json.dumps(stages[-1]),flush=True)
         if code:raise RuntimeError('Advanced Isaac stage failed: '+name)
     try:
+        revision=subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip()
+        (out/'isaac-source.json').write_text(json.dumps({'revision':revision},indent=2)+'\n')
+        step('isaac-source',['git','archive','--format=tar.gz','--output='+str(out/'isaac-source.tar.gz'),'HEAD'])
+        step('graphics-preflight',['vulkaninfo','--summary'])
         step('gpu-preflight',['nvidia-smi'])
         step('site-usd',[a.cpu_python,'-m','scripts.export_site_usd','--site','evaluation/site-v1.json','--output',str(out/'site.usda')])
         step('isaac-venv',['uv','venv','--python','3.12','--seed',str(env_dir)])
