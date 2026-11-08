@@ -89,3 +89,11 @@ def execute(ident: str,workflow: AgentWorkflow=Depends(operator),principal: Prin
     with simulation_slot():
         call(lambda:workflow.execute(ident))
     return workflow.get(ident)
+
+@router.post('/{ident}/graph')
+def checkpoint_graph(ident:str,workflow:AgentWorkflow=Depends(operator),principal:Principal=Depends(authenticate)):
+    principal.require('execute')
+    from backend.experiments.graph_workflow import run_graph
+    with simulation_slot():
+        graph=call(lambda:run_graph(workflow.root,ident,resume=True,policy=workflow.policy))
+    return {**workflow.get(ident),'graph':graph}

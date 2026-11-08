@@ -38,13 +38,10 @@ def main():
                'steps': [], 'limitations': ['Isaac geometry/basic CPU physics smoke only; no Isaac robot navigation.',
                                           'Three labeled model prompts are not a general agent reliability benchmark.',
                                           'No NIM/Cosmos/Kubernetes deployment in this session.']}
-    with tarfile.open(folder / 'source.tar.gz', 'w:gz') as source:
-        for path in sorted(ROOT.rglob('*')):
-            rel = path.relative_to(ROOT)
-            if not path.is_file() or path.is_symlink(): continue
-            if any(part in {'.git', '.venv', '__pycache__', '.pytest_cache', 'artifacts'} for part in rel.parts): continue
-            if any(part.startswith('.env') for part in rel.parts): continue
-            source.add(path, arcname=str(Path('AutonomyOS') / rel))
+    # Capture only a clean committed snapshot, excluding caches, secrets and generated assets.
+    dirty=subprocess.check_output(['git','status','--porcelain'],cwd=ROOT,text=True).strip()
+    if dirty:raise RuntimeError('Cloud validation requires a clean committed source checkout')
+    subprocess.run(['git','archive','--format=tar.gz','--output='+str(folder/'source.tar.gz'),'HEAD'],cwd=ROOT,check=True)
 
     def checkpoint(complete=False):
         (folder / 'session.json').write_text(json.dumps(session, indent=2) + '\n')
@@ -73,8 +70,8 @@ def main():
     py = sys.executable
     try:
         step('preflight', [py, '-c', "import torch,subprocess; subprocess.run(['nvidia-smi'],check=True); print(torch.__version__); assert torch.cuda.is_available(); assert torch.cuda.get_device_properties(0).total_memory >= 40_000_000_000"])
-        step('install', [py, '-m', 'pip', 'install', '-r', 'backend/requirements.txt', '-r',
-                         'requirements-gpu-validation.txt', '-r', 'requirements-usd.txt'], 1200)
+        step('install', [py, '-m', 'pip', 'install', '-r', 'backend/requirements-demo.txt', '-r',
+                         'requirements-gpu-validation.txt', '-r', 'requirements-usd.txt', 'pytest'], 1200)
         step('tests', [py, '-m', 'pytest', 'backend/tests', '-q', '--junitxml=' + str(folder / 'tests.xml')])
         step('contracts', [py, '-m', 'scripts.run_evaluation_suite', '--output', str(folder / 'contracts.json')])
         step('baseline', [py, '-m', 'scripts.run_experiment', '--output', str(folder / 'baseline'),

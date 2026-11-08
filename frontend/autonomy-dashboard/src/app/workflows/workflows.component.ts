@@ -45,6 +45,7 @@ export class WorkflowsComponent {
  }
  approve():void {this.request('POST','/'+this.selected.id+'/approve',{digest:this.selected.digest,actor:this.actor});}
  reject():void {this.request('POST','/'+this.selected.id+'/reject',{actor:this.actor,reason:this.reason});}
+ checkpoint():void {this.request('POST','/'+this.selected.id+'/graph',{});}
  execute():void {this.request('POST','/'+this.selected.id+'/execute',{});}
  download():void {
    const blob=new Blob([JSON.stringify(this.selected,null,2)],{type:'application/json'});

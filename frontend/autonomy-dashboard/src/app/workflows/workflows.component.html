@@ -32,6 +32,8 @@
      <div class="flex flex-wrap gap-3 items-end"><button (click)="approve()" [disabled]="busy || !actor.trim()" class="bg-amber-400 text-black px-4 py-2 text-sm">Approve exact request</button><label class="text-xs">Rejection reason<input [(ngModel)]="reason" maxlength="500" class="block bg-shell-raised border border-shell-border p-2 mt-1" /></label><button (click)="reject()" [disabled]="busy || !actor.trim() || !reason.trim()" class="border border-shell-border p-2 text-sm">Reject</button></div>
     }
     @if(selected.status==='approved'){<button (click)="execute()" [disabled]="busy" class="bg-amber-400 text-black px-4 py-2 text-sm">Run approved experiment</button>}
+    <button (click)="checkpoint()" [disabled]="busy || !['awaiting_approval','approved','completed'].includes(selected.status)" class="border border-shell-border px-3 py-2 text-sm">{{selected.status==='approved'?'Resume LangGraph execution':'Inspect LangGraph checkpoint'}}</button>
+    @if(selected.graph){<p class="text-xs text-shell-muted">LangGraph · {{selected.graph.paused?'Paused for recorded approval':'Graph finished'}} · {{selected.graph.next_nodes.join(', ')}}</p>}
     @if(selected.error){<p role="alert" class="text-red-400">{{selected.error}}</p>}
     @if(selected.report){
      <div class="border border-shell-border p-4"><h4 class="text-sm mb-2">Experiment outcome</h4><div class="flex justify-between text-sm"><span>{{selected.report.experiment.summary.success_count}} completed</span><span>{{selected.report.experiment.summary.failure_count}} failed</span></div>
