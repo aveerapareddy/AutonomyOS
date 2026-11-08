@@ -15,6 +15,9 @@ if __name__=='__main__':
     files += [root/n for n in ['source.tar.gz','junit.xml','ready.json','missions-backup.sqlite3']]
     files += [root/'frontend-manifest.json'] if (root/'frontend-manifest.json').exists() else []
     files += list((root/'traces').glob('*.jsonl'))
+    files += [f for f in (root/'isaac-robot').rglob('*') if f.is_file()]
+    files += [root/'site.usda'] if (root/'site.usda').exists() else []
+    files += [root/'isaac-stages.json'] if (root/'isaac-stages.json').exists() else []
     manifest={'schema_version':1,'files':{str(f.relative_to(root)):{'sha256':hashlib.sha256(f.read_bytes()).hexdigest(),'bytes':f.stat().st_size} for f in sorted(files)}}
     with zipfile.ZipFile(a.output,'w',zipfile.ZIP_DEFLATED) as z:
         z.writestr('manifest.json',json.dumps(manifest,indent=2))

@@ -38,6 +38,7 @@ _stream_count=0
 @router.get('/{mission_id}/stream')
 async def stream_mission(
     mission_id:str,request:Request,after_sequence:int=Query(default=0,ge=0),
+    await_new_run:bool=False,
     last_event_id:str|None=Header(default=None),
     mission_service:MissionService=Depends(get_mission_service),
     telemetry_service:TelemetryService=Depends(get_telemetry_service),
@@ -47,6 +48,7 @@ async def stream_mission(
     try:cursor=max(after_sequence,int(last_event_id or 0))
     except ValueError:raise HTTPException(422,'Last-Event-ID must be a nonnegative sequence')
     if cursor<0:raise HTTPException(422,'Last-Event-ID must be nonnegative')
+    initial_cursor=cursor
     with _stream_lock:
         if _stream_count>=20:raise HTTPException(429,'Too many telemetry streams',headers={'Retry-After':'5'})
         _stream_count+=1
@@ -62,7 +64,7 @@ async def stream_mission(
                     if record.sequence<=cursor:continue
                     cursor=record.sequence
                     yield f'id: {cursor}\nevent: telemetry\ndata: {record.model_dump_json()}\n\n'
-                if records and records[-1].event_type in {'mission_completed','mission_failed'}:
+                if records and records[-1].event_type in {'mission_completed','mission_failed'} and (not await_new_run or records[-1].sequence>initial_cursor):
                     yield 'event: terminal\ndata: {"complete":true}\n\n';break
                 now=time.monotonic()
                 if now-heartbeat>3:
