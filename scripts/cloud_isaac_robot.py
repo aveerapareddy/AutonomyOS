@@ -28,7 +28,7 @@ if __name__=='__main__':
         step('site-usd',[a.cpu_python,'-m','scripts.export_site_usd','--site','evaluation/site-v1.json','--output',str(out/'site.usda')])
         step('isaac-venv',['uv','venv','--python','3.12','--seed',str(env_dir)])
         python=str(env_dir/'bin/python')
-        step('isaac-install',[python,'-m','pip','install','isaacsim[all,extscache]==6.2.0.0','--extra-index-url','https://pypi.nvidia.com','-r','requirements-vision.txt'],1800)
+        step('isaac-install',[python,'-m','pip','install','isaacsim[all,extscache]==6.2.0.0','--extra-index-url','https://pypi.nvidia.com','Pillow==12.1.1'],1800)
         step('isaac-robot',[python,'-m','scripts.run_isaac_robot','--stage',str(out/'site.usda'),'--output',str(out/'isaac-robot')],1200,
              {**os.environ,'OMNI_KIT_ACCEPT_EULA':'YES','OMNI_KIT_ALLOW_ROOT':'1'})
         step('isaac-freeze',[python,'-m','pip','freeze'])
