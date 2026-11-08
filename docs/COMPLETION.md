@@ -43,7 +43,7 @@ Jobs run in separate processes, with atomic claims, input-bound idempotency, can
 | NVIDIA NIM | Structured compatible adapter and contract tests | Live NIM serving remains unverified without endpoint/access |
 | NeMo | Nemotron model use | No NeMo training/fine-tuning validation |
 | OpenUSD/Omniverse | Metric Z-up scene export, dimensions and round trip | Geometry interchange alone is not robot control |
-| Isaac Sim | Verified 6.2 import and 120 physics steps in prior GPU archive | Advanced Jetbot/RTX validation has its own separate result record |
+| Isaac Sim | Real Jetbot lane goal, 2,489 steps, 0.397 m error; two hash-verified RTX frames | One bounded case, default physics; [separate full record](ISAAC_ROBOT_VALIDATION.md) |
 | Newton | Real Newton 1.7/Warp CPU XPBD contact smoke, 480 steps | CPU contact only, no GPU robot claim |
 | Multimodal perception | Twelve real RGB/segmentation-truth cases | Fixed red-color baseline, distractor failures retained; no learned detector claim |
 | Cosmos/world models | Documented optional boundary | Gated model/license/access unavailable; no generated-world claim |
@@ -56,13 +56,13 @@ Jobs run in separate processes, with atomic claims, input-bound idempotency, can
 
 ## Validation record
 
-The final engineering source passed 178 backend tests and the Angular production build. The recovered CPU deployment archive independently verifies 168 tests, real HTTP execution, public-mode guards and persistence across restart at its exact earlier source revision `2e63030`; it is not relabeled as the final source. The original second GPU archive independently verifies all 35 files and all 13 stages. Each archive's receipt, source snapshot and dependency versions are authoritative for that run.
+The final engineering source passed 178 backend tests and the Angular production build. The recovered CPU deployment archive independently verifies 168 tests, real HTTP execution, public-mode guards and persistence across restart at its exact earlier source revision `2e63030`; it is not relabeled as the final source. The original second GPU archive independently verifies all 35 files and all 13 stages. The later complete 66-file GPU archive verifies a 176-test CPU deployment at its exact source, plus a separate final Isaac robot/camera source. All cloud pods are stopped after local verification. The final local 100-case runs each completed 99/100 with exact source/scenario/outcome reproduction; the failure remains in both reports. Each archive's receipt, source snapshot and dependency versions are authoritative for that run.
 
 The current corpus is `knowledge/engineering-v4.json`. MiniLM revision is `1110a243fdf4706b3f48f1d95db1a4f5529b4d41`. Nemotron revision is `54641c1611fcff44fa4865626462445e0a153fc7`. BM25 and semantic retrieval both score recall@3/MRR 1.0 on each four-query split of the same tiny dataset; no semantic improvement is claimed. Eight grounded-answer smoke cases passed exact-citation checks. A prior failed abbreviation case is retained and has a regression test.
 
 The image baseline reaches IoU 1.0 on four original views and approximately 0.011–0.019 with red distractors. These failures demonstrate why color segmentation cannot substantiate learned perception. Newton's probe settles from 1.5 m to approximately 0.09998 m; it does not validate the navigation engine.
 
-Python runtime dependency audit reported no known advisories for the tested frozen runtime set. NPM production audit reported zero; the full build-tool tree retained 21 moderate advisories and zero high/critical at the recorded audit time. Audit results are dated evidence, not a perpetual guarantee.
+Python runtime dependency audit, including pip and setuptools in the final native container freeze, reported no known advisories for that tested set. NPM production audit reported zero; the full build-tool tree retained 21 moderate advisories and zero high/critical at the recorded audit time. Audit results are dated evidence, not a perpetual guarantee.
 
 ## Decisions and operations
 

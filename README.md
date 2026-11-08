@@ -6,7 +6,7 @@ The control room includes live mission telemetry, simulation-time replay, metric
 
 Start with the [current architecture, coverage and measured limits](docs/COMPLETION.md) and [reproduction/runbook](docs/RUNBOOK.md). The [initial audit and phased plan](docs/AUTONOMYOS_2.md) and [earlier README snapshot](docs/engineering/LEGACY_README.md) are historical records.
 
-Verified optional components include pinned PyTorch/Hugging Face Nemotron inference on RTX, MiniLM semantic retrieval, OpenUSD round trips, Isaac Sim import/physics smoke and Newton CPU contact simulation. Live NIM, Cosmos generation, production GPU Kubernetes and physical safety remain unverified. Advanced Isaac robot/RTX results are reported separately and must not be inferred from the import smoke.
+Verified optional components include pinned PyTorch/Hugging Face Nemotron inference on RTX, MiniLM semantic retrieval, OpenUSD round trips, Isaac Sim Jetbot lane/RTX-camera validation and Newton CPU contact simulation. Live NIM, Cosmos generation, production GPU Kubernetes and physical safety remain unverified. The [Isaac validation record](docs/ISAAC_ROBOT_VALIDATION.md) documents the bounded goal case, failures, graphics repair and locally verified 66-file archive.
 
 ## Actual application captures
 
