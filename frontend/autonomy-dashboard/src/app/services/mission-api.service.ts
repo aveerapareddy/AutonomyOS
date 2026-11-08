@@ -30,6 +30,10 @@ export class MissionApiService {
     );
   }
 
+  telemetryStream(missionId:string,afterSequence=0):EventSource {
+    return new EventSource(`${this.base}/missions/${encodeURIComponent(missionId)}/stream?after_sequence=${afterSequence}`);
+  }
+
   getTelemetry(missionId: string, afterSequence = 0): Observable<TelemetryQueryResponse> {
     return this.http.get<TelemetryQueryResponse>(
       `${this.base}/missions/${encodeURIComponent(missionId)}/telemetry?after_sequence=${afterSequence}`,

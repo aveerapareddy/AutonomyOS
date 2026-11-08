@@ -65,9 +65,8 @@ def _projection_matrix_from_config(config: CameraConfig) -> list:
     if pb is None:
         raise RuntimeError("pybullet is not installed")
     aspect = config.width / max(config.height, 1)
-    fov_rad = config.fov_degrees * 3.141592653589793 / 180.0
     return pb.computeProjectionMatrixFOV(
-        fov_rad,
+        config.fov_degrees,
         aspect,
         config.near,
         config.far,

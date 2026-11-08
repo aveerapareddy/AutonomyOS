@@ -10,17 +10,16 @@ from pydantic import BaseModel, ConfigDict, Field
 from backend.core.config import get_settings
 from backend.experiments.agent_workflow import AgentWorkflow, WorkflowError, WorkflowPolicy
 from backend.api.simulation_gate import simulation_slot
+from backend.api.auth import Principal, authenticate
 
 router=APIRouter(prefix='/workflows',tags=['operator workflows'])
 
 
-def operator(authorization: Annotated[str | None, Header()] = None) -> AgentWorkflow:
+def operator(principal: Principal = Depends(authenticate)) -> AgentWorkflow:
     settings=get_settings()
-    if settings.public_demo or not settings.workflow_directory or len(settings.operator_token)<24:
+    if settings.public_demo or not settings.workflow_directory:
         raise HTTPException(403,'Operator workflows are not enabled')
-    expected='Bearer '+settings.operator_token
-    if not authorization or not hmac.compare_digest(authorization.encode(),expected.encode()):
-        raise HTTPException(401,'Operator token required',headers={'WWW-Authenticate':'Bearer'})
+    principal.require('read')
     return AgentWorkflow(Path(settings.workflow_directory),WorkflowPolicy(max_scenarios=10))
 
 
@@ -51,7 +50,8 @@ def listing(workflow: AgentWorkflow=Depends(operator)):
 
 
 @router.post('/import',status_code=201)
-async def import_report(request: Request, workflow: AgentWorkflow=Depends(operator)):
+async def import_report(request: Request, workflow: AgentWorkflow=Depends(operator), principal: Principal=Depends(authenticate)):
+    principal.require('execute')
     chunks=[];length=0
     async for chunk in request.stream():
         length+=len(chunk)
@@ -71,18 +71,21 @@ def get(ident: str,workflow: AgentWorkflow=Depends(operator)):
 
 
 @router.post('/{ident}/approve')
-def approve(ident: str,body: Review,workflow: AgentWorkflow=Depends(operator)):
-    return call(lambda:workflow.approve(ident,body.digest,body.actor,'human'))
+def approve(ident: str,body: Review,workflow: AgentWorkflow=Depends(operator),principal: Principal=Depends(authenticate)):
+    principal.require('review')
+    return call(lambda:workflow.approve(ident,body.digest,principal.name if principal.individual else body.actor,'human'))
 
 
 @router.post('/{ident}/reject')
-def reject(ident: str,body: Rejection,workflow: AgentWorkflow=Depends(operator)):
-    call(lambda:workflow.reject(ident,body.actor,body.reason))
+def reject(ident: str,body: Rejection,workflow: AgentWorkflow=Depends(operator),principal: Principal=Depends(authenticate)):
+    principal.require('review')
+    call(lambda:workflow.reject(ident,principal.name if principal.individual else body.actor,body.reason))
     return workflow.get(ident)
 
 
 @router.post('/{ident}/execute')
-def execute(ident: str,workflow: AgentWorkflow=Depends(operator)):
+def execute(ident: str,workflow: AgentWorkflow=Depends(operator),principal: Principal=Depends(authenticate)):
+    principal.require('execute')
     with simulation_slot():
         call(lambda:workflow.execute(ident))
     return workflow.get(ident)

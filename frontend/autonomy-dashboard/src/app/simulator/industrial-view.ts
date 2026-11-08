@@ -52,8 +52,8 @@ export class IndustrialView {
     }
     if (scene.robot) {
       const robot = new THREE.Group();
-      const body = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.35, 0.48), new THREE.MeshStandardMaterial({ color: 0xf4bb40, metalness: 0.3, roughness: 0.5 }));
-      body.position.y = 0.3;
+      const body = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.2, 0.3), new THREE.MeshStandardMaterial({ color: 0xf4bb40, metalness: 0.3, roughness: 0.5 }));
+      body.position.y = 0.1;
       robot.add(body);
       const heading = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 0.55, 0), 0.7, 0xffffff);
       robot.add(heading);

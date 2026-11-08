@@ -24,6 +24,7 @@ class WorldLayoutSpec:
     obstacle_positions: List[Tuple[float, float]]
     obstacle_types: List[str]
     target_position: Tuple[float, float]
+    obstacle_half_extents: List[Tuple[float, float, float]] | None = None
 
 
 @dataclass
@@ -151,13 +152,15 @@ def _create_obstacles_from_spec(spec: WorldLayoutSpec) -> Tuple[List[int], List[
         types.extend(["obstacle"] * (len(spec.obstacle_positions) - len(types)))
     for i, (pos, typ) in enumerate(zip(spec.obstacle_positions, types)):
         x, y = pos
+        half = spec.obstacle_half_extents[i] if spec.obstacle_half_extents else _OBSTACLE_HALF_GENERIC
+        shape = pb.createCollisionShape(pb.GEOM_BOX, halfExtents=half)
         body_id = pb.createMultiBody(
             0,
             shape,
             basePosition=(x, y, half[2]),
         )
         ids_.append(body_id)
-        objects_.append(WorldObject(object_id=f"obstacle_{i}", object_type=typ, x=x, y=y))
+        objects_.append(WorldObject(object_id=f"obstacle_{i}", object_type=typ, x=x, y=y, half_extents=half))
     return ids_, objects_
 
 

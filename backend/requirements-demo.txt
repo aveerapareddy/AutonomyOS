@@ -6,3 +6,6 @@ pydantic-settings==2.16.2
 numpy==2.3.5
 pybullet==3.2.7
 httpx==0.28.1
+
+opentelemetry-api==1.45.2
+opentelemetry-sdk==1.45.2

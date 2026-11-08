@@ -26,7 +26,8 @@ def export_scenario(scenario: ScenarioConfig, path: Path):
     # Scenario-built PyBullet obstacles are all 1m cubes, including those labeled wall.
     for i, (x, y) in enumerate(scenario.obstacle_positions):
         kind = scenario.obstacle_types[i] if i < len(scenario.obstacle_types) else "obstacle"
-        box(f"obstacle_{i}", (x, y, .5), (1, 1, 1), (.5, .5, .5), kind)
+        hx, hy, hz = scenario.obstacle_half_extents[i] if scenario.obstacle_half_extents else (.5, .5, .5)
+        box(f"obstacle_{i}", (x, y, hz), (2*hx, 2*hy, 2*hz), (.5, .5, .5), kind)
     x, y = scenario.target_position
     box("target", (x, y, .15), (.3, .3, .3), (.9, .2, .2), "target")
     x, y, theta = scenario.robot_start_position

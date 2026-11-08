@@ -41,12 +41,14 @@ class OrchestratorService:
         execution_world_layout_provider: Optional[Callable[[], WorldLayoutSpec]] = None,
         planner_service: Optional[PlannerService] = None,
         execution_config: Optional[ExecutionConfig] = None,
+        geometry_aware: bool = False,
     ) -> None:
         self._mission_service = mission_service
         self._telemetry_service = telemetry_service
         self._get_layout = world_layout_provider or get_world_layout
         self._get_robot_start = robot_start_provider
         self._get_execution_world_layout = execution_world_layout_provider
+        self._geometry_aware = geometry_aware
         self._execution_config = execution_config
         self._planner = planner_service or PlannerService()
 
@@ -155,6 +157,15 @@ class OrchestratorService:
         )
         start_x, start_y, _ = robot_start
         obstacle_positions = [(o.x, o.y) for o in obstacle_objects]
+        if self._geometry_aware:
+            obstacle_positions = []
+            for o in obstacle_objects:
+                hx, hy, _ = o.half_extents
+                # Include boundary samples and all occupied grid-cell centers.
+                import math
+                for col in range(math.floor((o.x-hx-world_bounds[0])/.25), math.ceil((o.x+hx-world_bounds[0])/.25)+1):
+                    for row in range(math.floor((o.y-hy-world_bounds[2])/.25), math.ceil((o.y+hy-world_bounds[2])/.25)+1):
+                        obstacle_positions.append((world_bounds[0]+(col+.5)*.25,world_bounds[2]+(row+.5)*.25))
         grid = build_occupancy_grid(world_bounds, obstacle_positions, inflation_radius=inflation)
         nav_result = plan_path(
             grid,

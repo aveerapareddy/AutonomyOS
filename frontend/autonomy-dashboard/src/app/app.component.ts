@@ -1,3 +1,4 @@
+import { OperationsComponent } from './operations/operations.component';
 import { WorkflowsComponent } from './workflows/workflows.component';
 import { CommonModule } from '@angular/common';
 import { Component, inject, OnDestroy } from '@angular/core';
@@ -12,7 +13,7 @@ type HeaderRunState = 'READY' | 'RUNNING' | 'COMPLETED' | 'FAILED';
 
 @Component({
   selector: 'app-root',
-  imports: [CommonModule, FormsModule, SimulatorViewComponent, WorkflowsComponent],
+  imports: [CommonModule, FormsModule, SimulatorViewComponent, WorkflowsComponent, OperationsComponent],
   templateUrl: './app.component.html',
 })
 export class AppComponent implements OnDestroy {
@@ -24,6 +25,7 @@ export class AppComponent implements OnDestroy {
 
   private liveTimer?: ReturnType<typeof setInterval>;
   private polling = false;
+  private stream?:EventSource;
   private runCursor = 0;
   telemetryConnection = 'Idle';
   ngOnDestroy(): void { this.stopReplay(); this.stopLive(); }
@@ -31,6 +33,7 @@ export class AppComponent implements OnDestroy {
   private stopLive(): void {
     if(this.liveTimer) clearInterval(this.liveTimer);
     this.liveTimer=undefined;
+    this.stream?.close();this.stream=undefined;
   }
 
   private pollLive(): void {
@@ -153,8 +156,15 @@ export class AppComponent implements OnDestroy {
     this.runCursor=this.telemetryEvents.at(-1)?.sequence ?? 0;
     this.execution=null; this.telemetryEvents=[];
     this.telemetryConnection='Connecting…';
-    this.pollLive();
-    this.liveTimer=setInterval(()=>this.pollLive(),250);
+    this.stream=this.api.telemetryStream(this.currentMissionId,this.runCursor);
+    this.stream.addEventListener('telemetry',(event:MessageEvent)=>{
+      const item=JSON.parse(event.data) as TelemetryEvent;
+      const events=new Map(this.telemetryEvents.map(e=>[e.sequence,e]));events.set(item.sequence,item);
+      this.telemetryEvents=[...events.values()].sort((a,b)=>a.sequence-b.sequence);
+      this.telemetryConnection='Connected · live event stream';this.refreshSimulatorScene();
+    });
+    this.stream.addEventListener('terminal',()=>this.stopLive());
+    this.stream.onerror=()=>{if(this.runState==='RUNNING')this.telemetryConnection='Reconnecting from last event…';};
     this.api.executeMission(this.currentMissionId).subscribe({
         next: (summary) => {
           this.stopLive();
@@ -176,6 +186,14 @@ export class AppComponent implements OnDestroy {
               : 'Execute failed';
         },
       });
+  }
+
+  showSiteResult(result:any):void {
+    this.stopLive();this.stopReplay();this.replayIndex=-1;
+    this.currentMissionId=null;this.runState=result.summary.status==='completed'?'COMPLETED':'FAILED';
+    this.telemetryEvents=result.telemetry;this.telemetryConnection='Saved isolated site execution';
+    this.applyExecution(result.summary);
+    window.scrollTo({top:0,behavior:'smooth'});
   }
 
   private applyExecution(summary: MissionExecutionSummary): void {

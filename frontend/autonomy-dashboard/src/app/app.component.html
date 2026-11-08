@@ -225,5 +225,5 @@
       }
     </section>
   </main>
-  <div class="max-w-[1680px] mx-auto px-6 pb-8"><p class="text-xs text-shell-muted">Telemetry: {{telemetryConnection}} · {{telemetryEvents.length}} recorded events</p><app-workflows /></div>
+  <div class="max-w-[1680px] mx-auto px-6 pb-8"><p class="text-xs text-shell-muted">Telemetry: {{telemetryConnection}} · {{telemetryEvents.length}} recorded events</p><app-workflows /><app-operations (sceneResult)="showSiteResult($event)" /></div>
 </div>

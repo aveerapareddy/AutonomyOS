@@ -15,6 +15,9 @@ RUN pip install --no-cache-dir -r requirements-demo.txt \
     && useradd --uid 10001 --create-home autonomy \
     && mkdir /data && chown autonomy:autonomy /data
 COPY backend/ ./backend/
+COPY scripts/ ./scripts/
+COPY evaluation/ ./evaluation/
+COPY knowledge/ ./knowledge/
 COPY --from=dashboard /frontend/dist/autonomy-dashboard/browser/ ./dashboard/
 USER autonomy
 EXPOSE 8000

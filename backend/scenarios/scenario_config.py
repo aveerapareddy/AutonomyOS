@@ -13,5 +13,6 @@ class ScenarioConfig(BaseModel):
     world_bounds: Tuple[float, float, float, float]
     obstacle_positions: List[Tuple[float, float]] = Field(default_factory=list)
     obstacle_types: List[str] = Field(default_factory=list)
+    obstacle_half_extents: List[Tuple[float, float, float]] = Field(default_factory=list)
     target_position: Tuple[float, float]
     robot_start_position: Tuple[float, float, float] = (0.0, 0.0, 0.0)

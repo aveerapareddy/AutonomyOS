@@ -5,11 +5,13 @@ from fastapi.staticfiles import StaticFiles
 from backend.core.config import get_settings
 from fastapi.middleware.cors import CORSMiddleware
 
+from backend.api.routes.operations import router as operations_router
 from backend.api.routes.workflows import router as workflows_router
 from backend.api.routes.benchmarks import router as benchmarks_router
 from backend.api.routes.missions import router as missions_router
 from backend.api.routes.replay import router as replay_router
 from backend.api.routes.telemetry import router as telemetry_router
+from backend.core.observability import TelemetryMiddleware
 from backend.core.logging import get_logger
 from backend.api.demo_guard import DemoGuard
 
@@ -22,6 +24,7 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
+app.add_middleware(TelemetryMiddleware, directory=get_settings().traces_directory)
 app.add_middleware(DemoGuard, public_demo=get_settings().public_demo)
 
 app.add_middleware(
@@ -48,6 +51,7 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+app.include_router(operations_router)
 app.include_router(workflows_router)
 app.include_router(missions_router)
 app.include_router(telemetry_router)

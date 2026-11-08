@@ -25,7 +25,7 @@ class DemoGuard(BaseHTTPMiddleware):
         is_execution = request.method == 'POST' and path.endswith('/execute')
         acquired = False
         if self.public_demo:
-            if path.startswith('/workflows'):
+            if path.startswith(('/workflows','/operations')):
                 return JSONResponse({'detail': 'Operator workflows are disabled on the public demo'}, status_code=403)
             if path.startswith('/benchmarks'):
                 return JSONResponse({'detail': 'Batch benchmarks are disabled on the public demo'}, status_code=403)

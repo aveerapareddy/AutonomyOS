@@ -23,6 +23,7 @@ def _world_layout_spec_from_scenario(scenario: ScenarioConfig) -> WorldLayoutSpe
         obstacle_positions=list(scenario.obstacle_positions),
         obstacle_types=list(scenario.obstacle_types),
         target_position=scenario.target_position,
+        obstacle_half_extents=scenario.obstacle_half_extents or None,
     )
 
 
@@ -36,6 +37,7 @@ def _layout_from_scenario(
             object_type=typ,
             x=pos[0],
             y=pos[1],
+            half_extents=scenario.obstacle_half_extents[i] if scenario.obstacle_half_extents else (.5,.5,.5),
         )
         for i, (pos, typ) in enumerate(
             zip(scenario.obstacle_positions, scenario.obstacle_types)

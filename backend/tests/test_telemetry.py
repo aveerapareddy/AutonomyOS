@@ -109,3 +109,21 @@ def test_durable_trace_export_survives_restart(tmp_path):
     assert len(trace) == 1
     assert trace[0]["sequence"] == 1
     assert trace[0]["payload"] == {"value": 42}
+
+
+def test_sse_reconnect_cursor_and_terminal_event():
+    from fastapi.testclient import TestClient
+    from backend.api.main import app
+    from backend.api.dependencies import get_telemetry_service
+    client=TestClient(app)
+    ident=client.post('/missions',json={'mission_text':'Go to target'}).json()['mission_id']
+    telemetry=get_telemetry_service()
+    telemetry.record(ident,'robot_state','test',{'robot_x':0,'robot_y':0,'simulation_time_seconds':0})
+    last=telemetry.record(ident,'mission_completed','test',{})
+    response=client.get('/missions/'+ident+'/stream',headers={'Last-Event-ID':str(last.sequence-1)})
+    assert response.status_code==200
+    assert response.headers['content-type'].startswith('text/event-stream')
+    assert f'id: {last.sequence}\n' in response.text
+    assert 'event: terminal' in response.text
+    assert 'robot_state' not in response.text
+    assert client.get('/missions/'+ident+'/stream',headers={'Last-Event-ID':'invalid'}).status_code==422

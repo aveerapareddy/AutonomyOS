@@ -197,3 +197,11 @@ def test_capture_frame_metadata_matches_config() -> None:
         assert math.isfinite(frame.camera_pose.position_z)
     finally:
         env.shutdown()
+
+
+def test_camera_projection_uses_degree_fov():
+    import math
+    from backend.simulator.camera import _projection_matrix_from_config,default_camera_config
+    config=default_camera_config(width=320,height=240)
+    matrix=_projection_matrix_from_config(config)
+    assert matrix[5]==pytest.approx(1/math.tan(math.radians(config.fov_degrees)/2),rel=1e-5)

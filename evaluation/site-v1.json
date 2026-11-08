@@ -1,0 +1,1 @@
+{"name":"Warehouse transfer lane","units":"meters","bounds":[-10,10,-10,10],"start":[0,-6,1.57079632679],"target":[0,6],"assets":[{"id":"west-rack","kind":"wall","x":-3,"y":0,"half_extents":[0.4,4,1.5]},{"id":"east-rack","kind":"wall","x":3,"y":0,"half_extents":[0.4,4,1.5]},{"id":"pallet","kind":"block","x":6,"y":-3,"half_extents":[0.6,0.6,0.5]}]}
