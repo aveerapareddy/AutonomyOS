@@ -2,7 +2,7 @@
 
 ## CPU reference
 
-Use Python 3.11 and Node 20. Install `requirements-demo.txt` and `requirements-observability.txt`; add `requirements-usd.txt` for USD checks and `requirements-agents.txt` for LangGraph. Run `python -m pytest backend/tests -q`. From `frontend/autonomy-dashboard`, run `npm ci` and `npm run build`.
+Use Python 3.11 and Node 20. Install `backend/requirements-demo.txt` and `requirements-observability.txt`; add `requirements-usd.txt` for USD checks and `requirements-agents.txt` for LangGraph. Run `python -m pytest backend/tests -q`. From `frontend/autonomy-dashboard`, run `npm ci` and `npm run build`.
 
 Set `AUTONOMY_FRONTEND_DIRECTORY=frontend/autonomy-dashboard/dist/autonomy-dashboard/browser`, `AUTONOMY_PLANNER_MODE=rule_based`, an operator token, and persistent mission/workflow/operations/trace directories. Start `uvicorn backend.api.main:app --host 127.0.0.1 --port 8000`. In a separate process run `python -m scripts.job_worker --root <the same operations directory>`. Visit `/demo/`.
 

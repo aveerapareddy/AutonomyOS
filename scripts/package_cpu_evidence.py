@@ -15,7 +15,8 @@ if __name__=='__main__':
     files += [root/n for n in ['source.tar.gz','junit.xml','ready.json','missions-backup.sqlite3']]
     files += [root/'frontend-manifest.json'] if (root/'frontend-manifest.json').exists() else []
     files += list((root/'traces').glob('*.jsonl'))
-    files += [f for f in (root/'isaac-robot').rglob('*') if f.is_file()]
+    files += [f for folder in root.glob('isaac-robot*') if folder.is_dir() for f in folder.rglob('*') if f.is_file()]
+    files += [root/n for n in ['isaac-verified.json','isaac-source.tar.gz','isaac-source.json'] if (root/n).exists()]
     files += [root/'site.usda'] if (root/'site.usda').exists() else []
     files += [root/'isaac-stages.json'] if (root/'isaac-stages.json').exists() else []
     manifest={'schema_version':1,'files':{str(f.relative_to(root)):{'sha256':hashlib.sha256(f.read_bytes()).hexdigest(),'bytes':f.stat().st_size} for f in sorted(files)}}

@@ -10,13 +10,13 @@ Verified optional components include pinned PyTorch/Hugging Face Nemotron infere
 
 ## Run locally
 
-Use Python 3.11 and Node 20. Install `requirements-demo.txt`, `requirements-observability.txt` and the relevant optional requirements. Build the Angular application in `frontend/autonomy-dashboard` with `npm ci && npm run build`. Configure persistent data directories and an operator token outside source control; follow the runbook to start the API and separate worker. The browser interface is served at `/demo/`.
+Use Python 3.11 and Node 20. Install `backend/requirements-demo.txt`, `requirements-observability.txt` and the relevant optional requirements. Build the Angular application in `frontend/autonomy-dashboard` with `npm ci && npm run build`. Configure persistent data directories and an operator token outside source control; follow the runbook to start the API and separate worker. The browser interface is served at `/demo/`.
 
 ```sh
 python -m pytest backend/tests -q
 python -m scripts.validate_completion --output /path/to/new-evidence
 ```
 
-The full engineering suite has 176 tests at the recorded validation revision. Docker/Compose and a local Kind Kubernetes API/worker/PVC deployment have been exercised with real simulation jobs and restart persistence. Cloud evidence is exported and verified locally before temporary resources are stopped.
+The full engineering suite has 178 tests at the recorded validation revision. Docker/Compose and a local Kind Kubernetes API/worker/PVC deployment have been exercised with real simulation jobs and restart persistence. Cloud evidence is exported and verified locally before temporary resources are stopped.
 
 This is portfolio evidence, not a claim of industrial deployment, collision safety or employment experience. Small evaluation sets and observed failures are retained. See the current coverage matrix before using project claims in a resume.

@@ -31,8 +31,9 @@ if __name__=='__main__':
         step('isaac-install',[python,'-m','pip','install','isaacsim[all,extscache]==6.2.0.0','--extra-index-url','https://pypi.nvidia.com','Pillow==12.1.1'],1800)
         step('isaac-robot',[python,'-m','scripts.run_isaac_robot','--stage',str(out/'site.usda'),'--output',str(out/'isaac-robot')],1200,
              {**os.environ,'OMNI_KIT_ACCEPT_EULA':'YES','OMNI_KIT_ALLOW_ROOT':'1'})
-        report=json.loads((out/'isaac-robot/report.json').read_text())
-        if not report.get('passed'):raise RuntimeError('Isaac report did not pass, regardless of process exit code')
+        from backend.integrations.isaac_evidence import verify_robot_evidence
+        receipt=verify_robot_evidence(out/'isaac-robot',out/'site.usda')
+        (out/'isaac-verified.json').write_text(json.dumps(receipt,indent=2)+'\n')
         step('isaac-freeze',[python,'-m','pip','freeze'])
     finally:
         (out/'isaac-stages.json').write_text(json.dumps(stages,indent=2)+'\n')

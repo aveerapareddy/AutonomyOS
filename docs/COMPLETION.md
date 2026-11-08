@@ -56,7 +56,7 @@ Jobs run in separate processes, with atomic claims, input-bound idempotency, can
 
 ## Validation record
 
-The final engineering source passed 176 backend tests and the Angular production build. The recovered CPU deployment archive independently verifies 168 tests, real HTTP execution, public-mode guards and persistence across restart at its exact earlier source revision `2e63030`; it is not relabeled as the final source. The original second GPU archive independently verifies all 35 files and all 13 stages. Each archive's receipt, source snapshot and dependency versions are authoritative for that run.
+The final engineering source passed 178 backend tests and the Angular production build. The recovered CPU deployment archive independently verifies 168 tests, real HTTP execution, public-mode guards and persistence across restart at its exact earlier source revision `2e63030`; it is not relabeled as the final source. The original second GPU archive independently verifies all 35 files and all 13 stages. Each archive's receipt, source snapshot and dependency versions are authoritative for that run.
 
 The current corpus is `knowledge/engineering-v4.json`. MiniLM revision is `1110a243fdf4706b3f48f1d95db1a4f5529b4d41`. Nemotron revision is `54641c1611fcff44fa4865626462445e0a153fc7`. BM25 and semantic retrieval both score recall@3/MRR 1.0 on each four-query split of the same tiny dataset; no semantic improvement is claimed. Eight grounded-answer smoke cases passed exact-citation checks. A prior failed abbreviation case is retained and has a regression test.
 
