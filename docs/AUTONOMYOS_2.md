@@ -1,5 +1,7 @@
 # AutonomyOS 2.0: evidence-first simulation automation
 
+> Historical phase record. See [current delivery status](COMPLETION.md) and [runbook](RUNBOOK.md) for subsequent implementation and evidence.
+
 > Current status: the second GPU run was saved and independently verified before shutdown.
 > The governed workflow is implemented and the integrated backend passes 135 tests.
 > See [the current validation record](VALIDATION_RERUN.md); older snapshots below are historical.

@@ -1,5 +1,7 @@
 # Versioned engineering retrieval and bounded tuning
 
+> Historical phase record. See [current delivery status](COMPLETION.md) and [runbook](RUNBOOK.md) for subsequent implementation and evidence.
+
 ## Retrieval slice
 
 `knowledge/engineering-v1.json` freezes eight first-party source documents with

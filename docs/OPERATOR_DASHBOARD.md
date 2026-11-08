@@ -1,5 +1,7 @@
 # Operator workspace and incremental telemetry
 
+> Historical phase record. See [current delivery status](COMPLETION.md) and [runbook](RUNBOOK.md) for subsequent implementation and evidence.
+
 This increment connects the Angular dashboard to the durable experiment controller.
 The original visual reference is unavailable; no visual-parity claim is made. The
 existing industrial 3D/2D viewer is preserved. This is local development, not a
